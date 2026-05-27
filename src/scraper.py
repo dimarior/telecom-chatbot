@@ -219,10 +219,15 @@ async def _fetch_playwright(url: str) -> Optional[str]:
         return None
 
 
-async def _crawl_site(base_url: str, allowed_domains: list[str], max_pages: int = SCRAPE_MAX_PAGES) -> list[str]:
+async def _crawl_site(
+    base_url: str,
+    allowed_domains: list[str],
+    max_pages: int = SCRAPE_MAX_PAGES,
+    seed_urls: list[str] | None = None,
+) -> list[str]:
     visited: set[str] = set()
     start = base_url.rstrip("/")
-    queue: list[str] = [start]
+    queue: list[str] = seed_urls if seed_urls else [start]
     documents: list[str] = []
     errors = 0
     skipped = 0
@@ -292,7 +297,13 @@ def scrape_all() -> list[str]:
             print(f"\n{'='*60}\n🌐 Scrapeando: {name} ({target['base_url']})\n{'='*60}")
             t0 = time.time()
 
-            docs = asyncio.run(_crawl_site(target["base_url"], target["allowed_domains"]))
+            docs = asyncio.run(
+                _crawl_site(
+                    target["base_url"],
+                    target["allowed_domains"],
+                    seed_urls=target.get("seed_urls"),
+                )
+            )
 
             elapsed = round(time.time() - t0, 2)
             output_path = PROCESSED_DATA_DIR / target["output_file"]

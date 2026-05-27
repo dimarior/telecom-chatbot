@@ -51,18 +51,47 @@ SCRAPE_MAX_PAGES: int = int(os.getenv("SCRAPE_MAX_PAGES", "1000"))
 # URLs objetivo de scraping
 SCRAPE_TARGETS: list[dict] = [
     {
-        "name": "recamier",
-        "base_url": "https://recamier.com/",
-        "output_file": "recamier_content.txt",
-        "allowed_domains": ["recamier.com"],
+        "name": "movistar",
+        "base_url": "https://www.movistar.com.co/",
+        "output_file": "movistar_content.txt",
+        "allowed_domains": ["movistar.com.co", "descubre.movistar.co"],
+        "seed_urls": [
+            "https://descubre.movistar.co/atencion-cliente/politicas-de-privacidad/faqs.html",
+            "https://www.movistar.com.co/atencion-al-cliente/atencion-en-linea",
+            "https://www.movistar.com.co/atencion-al-cliente/asistencia-tecnica",
+            "https://descubre.movistar.co/movistar-accesible/preguntas-television.html",
+            "https://www.movistar.com.co/procesos-autogestion",
+        ],
     },
     {
-        "name": "saloninprofessional",
-        "base_url": "https://saloninprofessional.com/",
-        "output_file": "saloninprofessional_content.txt",
-        "allowed_domains": ["saloninprofessional.com"],
+        "name": "claro",
+        "base_url": "https://www.claro.com.co/",
+        "output_file": "claro_content.txt",
+        "allowed_domains": ["claro.com.co"],
+        "seed_urls": [
+            "https://www.claro.com.co/personas/faqs/",
+            "https://www.claro.com.co/institucional/soporte-tecnico-claro/",
+            "https://www.claro.com.co/personas/autogestion/whatsapp/",
+            "https://www.claro.com.co/personas/autogestion/",
+            "https://www.claro.com.co/personas/servicios/servicios-moviles/",
+            "https://www.claro.com.co/personas/servicios/servicios-hogar/",
+            "https://www.claro.com.co/personas/legal-y-regulatorio/",
+        ],
+    },
+    {
+        "name": "tigo",
+        "base_url": "https://www.tigo.com.co/",
+        "output_file": "tigo_content.txt",
+        "allowed_domains": ["tigo.com.co", "ayuda.tigo.com.co"],
+        "seed_urls": [
+            "https://www.tigo.com.co/preguntas-frecuentes-servicios-tigo",
+            "https://ayuda.tigo.com.co/hc/centro-de-ayuda/es",
+            "https://ayuda.tigo.com.co/hc/centro-de-ayuda/es/categories/general",
+        ],
     },
 ]
+
+EXPERIMENT_NAME: str = os.getenv("EXPERIMENT_NAME", "telecom-chatbot-rag")
 
 # ── MLflow ────────────────────────────────────────────────────────────────────
 MLFLOW_TRACKING_URI: str = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
