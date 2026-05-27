@@ -1,0 +1,39 @@
+{
+  "marcas": {
+    "recamier": {
+      "nombre": "Recamier",
+      "descripcion": "Marca colombiana líder en cuidado capilar con más de 50 años de trayectoria",
+      "sitio_web": "https://recamier.com/",
+      "redes": {
+        "instagram": "@recamier_oficial",
+        "facebook": "RecamierOficial"
+      },
+      "lineas_principales": [
+        "Tratamientos de Queratina",
+        "Coloración Profesional",
+        "Hidratación y Nutrición",
+        "Anticaída y Crecimiento",
+        "Alisado Progresivo",
+        "Rizos y Ondas"
+      ]
+    },
+    "salon_in_professional": {
+      "nombre": "Salon In Professional",
+      "descripcion": "Línea profesional para salones de belleza y peluquerías",
+      "sitio_web": "https://saloninprofessional.com/",
+      "enfoque": "Uso profesional en salones de belleza",
+      "lineas_principales": [
+        "Tratamientos Profesionales",
+        "Coloración",
+        "Queratina Profesional",
+        "Cuidado del Cuero Cabelludo"
+      ]
+    }
+  },
+  "contacto": {
+    "pais": "Colombia",
+    "sitio_web_principal": "https://recamier.com/",
+    "atencion_cliente": "Disponible en el sitio web oficial recamier.com",
+    "puntos_de_venta": "Farmacias, supermercados, salones de belleza y tienda online"
+  }
+}
