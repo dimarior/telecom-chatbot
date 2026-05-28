@@ -8,31 +8,31 @@ install-playwright:
 	playwright install chromium
 
 setup: install install-playwright
-	@echo "✅ Setup completo"
-	@echo "👉 Siguiente paso: copia .env.example a .env y configura MISTRAL_API_KEY"
+	@echo "Setup completo"
+	@echo "Siguiente paso: copia .env.example a .env y configura MISTRAL_API_KEY"
 
 # ── Pipeline ──────────────────────────────────────────────────────────────────
 scrape:
-	@echo "🌐 Iniciando web scraping..."
+	@echo "Iniciando web scraping de Claro, Movistar y Tigo..."
 	python -m src.scraper
 
 ingest:
-	@echo "🔢 Generando vectorstore..."
+	@echo "Generando vectorstore con contenido de operadores..."
 	python -m src.ingest
 
 pipeline:
-	@echo "🚀 Ejecutando pipeline completo..."
+	@echo "Ejecutando pipeline completo GAIA..."
 	python main.py
 
 # ── Servicios ─────────────────────────────────────────────────────────────────
 api:
-	uvicorn api.main:app --reload --host 127.0.0.1 --port 8080
+	uvicorn api.main:app --reload --host 127.0.0.1 --port 8082
 
 streamlit:
-	streamlit run app/streamlit_app.py --server.port 8501
+	streamlit run app/streamlit_app.py --server.port 8503
 
 mlflow:
-	mlflow server --host 127.0.0.1 --port 5000
+	mlflow server --host 127.0.0.1 --port 5002
 
 # ── Docker (Prometheus + Grafana) ─────────────────────────────────────────────
 docker-up:
@@ -56,21 +56,21 @@ clean-data:
 	rm -f data/processed/*.txt
 
 clean: clean-vectorstore clean-db
-	@echo "🗑️  Limpieza completada (vectorstore + db)"
+	@echo "Limpieza completada (vectorstore + db)"
 
 # ── Ayuda ─────────────────────────────────────────────────────────────────────
 help:
 	@echo ""
-	@echo "  RECAMIER CHATBOT — Comandos disponibles"
-	@echo "  ────────────────────────────────────────"
-	@echo "  make setup          → Instala dependencias + Playwright"
-	@echo "  make scrape         → Scrapea recamier.com y saloninprofessional.com"
-	@echo "  make ingest         → Genera embeddings y vectorstore"
-	@echo "  make pipeline       → Ejecuta todo el pipeline"
-	@echo "  make api            → Inicia API en :8080"
-	@echo "  make streamlit      → Inicia Streamlit en :8501"
-	@echo "  make mlflow         → Inicia MLflow UI en :5000"
-	@echo "  make docker-up      → Levanta Prometheus + Grafana"
-	@echo "  make evaluate       → Evalúa el sistema RAG"
-	@echo "  make clean          → Limpia vectorstore y DB"
+	@echo "  GAIA — Asistente Conversacional Telecomunicaciones Colombia"
+	@echo "  ─────────────────────────────────────────────────"
+	@echo "  make setup          -> Instala dependencias + Playwright"
+	@echo "  make scrape         -> Scrapea Claro, Movistar y Tigo"
+	@echo "  make ingest         -> Genera embeddings y vectorstore"
+	@echo "  make pipeline       -> Ejecuta todo el pipeline"
+	@echo "  make api            -> Inicia API en :8082"
+	@echo "  make streamlit      -> Inicia Streamlit en :8503"
+	@echo "  make mlflow         -> Inicia MLflow en :5002"
+	@echo "  make docker-up      -> Levanta Prometheus + Grafana"
+	@echo "  make evaluate       -> Evalua el sistema RAG"
+	@echo "  make clean          -> Limpia vectorstore y DB"
 	@echo ""
