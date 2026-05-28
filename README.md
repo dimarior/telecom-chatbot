@@ -303,6 +303,27 @@ docker compose up -d
 
 ---
 
+## Comandos rápidos con Makefile
+
+El proyecto incluye un Makefile para simplificar la ejecución de comandos frecuentes.
+En lugar de escribir el comando completo en la terminal, puedes usar:
+
+| Comando          | Equivale a                                              |
+|---|---|
+| make setup       | pip install -r requirements.txt + playwright install    |
+| make scrape      | python -m src.scraper                                   |
+| make ingest      | python -m src.ingest                                    |
+| make api         | uvicorn api.main:app --reload --host 127.0.0.1 --port 8082 |
+| make streamlit   | streamlit run app/streamlit_app.py --server.port 8503   |
+| make mlflow      | mlflow server --host 127.0.0.1 --port 5002              |
+| make evaluate    | python -m src.evaluate                                  |
+| make clean       | Elimina vectorstore/ y recamier_memory.db               |
+
+Nota: cada comando debe ejecutarse en una terminal independiente
+con el entorno virtual activado (.venv\Scripts\activate en Windows).
+
+---
+
 ## Evaluacion del Sistema RAG
 
 El modulo `src/evaluate.py` ejecuta un conjunto de preguntas de evaluacion sobre el sistema RAG y registra las metricas en MLflow.
