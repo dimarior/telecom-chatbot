@@ -10,6 +10,19 @@ Los operadores cubiertos son Claro, Movistar y Tigo.
 
 ---
 
+## Vista del Producto
+
+### Interfaz principal
+![Interfaz GAIA](app/assets/screenshot-interfaz.png)
+
+### Selector de operadores
+![Operadores GAIA](app/assets/screenshot-sidebar.png)
+
+### Conversación de ejemplo
+![Conversacion GAIA](app/assets/screenshot-conversacion.png)
+
+---
+
 ## Arquitectura del Sistema
 
 El sistema se compone de tres capas principales: la interfaz de usuario (Streamlit), la capa de API (FastAPI), y el motor de inteligencia conversacional (LangGraph + RAG).
