@@ -70,13 +70,13 @@ def get_img_tag(path: str, width: str = "auto", extra_style: str = "") -> str:
 try:
     favicon = Image.open(str(ASSETS / "gaia-favicon.ico"))
     st.set_page_config(
-        page_title="GAIA — Inteligencia Conversacional",
+        page_title="GAIA - Inteligencia Conversacional",
         page_icon=favicon,
         layout="wide",
     )
 except Exception:
     st.set_page_config(
-        page_title="GAIA — Inteligencia Conversacional",
+        page_title="GAIA - Inteligencia Conversacional",
         page_icon="✦",
         layout="wide",
     )
