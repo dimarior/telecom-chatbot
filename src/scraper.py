@@ -34,7 +34,7 @@ from src.config import (
     SCRAPE_TIMEOUT_S,
 )
 
-_LOG = logging.getLogger("recamier.scraper")
+_LOG = logging.getLogger("telecom.scraper")
 
 _USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",

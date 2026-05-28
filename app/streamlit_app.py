@@ -1,41 +1,46 @@
 """
-app/streamlit_app.py — Telecom Chatbot Colombia
+app/streamlit_app.py — GAIA Telecom Colombia
 """
 import base64
 import uuid
+import os
 import requests
 from pathlib import Path
 from PIL import Image
 import streamlit as st
 
 MODELO_ACTIVO = "mistral-small-latest"
-API_URL = "http://127.0.0.1:8081/ask"
-HEALTH_URL = "http://127.0.0.1:8081/health"
+API_URL = "http://127.0.0.1:8082/ask/graph"
+HEALTH_URL = "http://127.0.0.1:8082/health"
 ASSETS = Path("app/assets")
 
 OPERADORES = {
     "todos": {
         "nombre": "Todos los operadores",
-        "color": "#2D3748",
+        "color": "#4FE3E0",
         "emoji": "📡",
+        "logo": None,
         "placeholder": "Pregunta sobre Claro, Movistar o Tigo...",
     },
     "claro": {
         "nombre": "Claro",
-        "color": "#E8002D",
+        "color": "#4FE3E0",
         "emoji": "🔴",
+        "logo": "app/assets/claro-logo.png",
         "placeholder": "Pregunta sobre planes, soporte o servicios de Claro...",
     },
     "movistar": {
         "nombre": "Movistar",
-        "color": "#009BDE",
+        "color": "#5DA8FF",
         "emoji": "🔵",
+        "logo": "app/assets/movistar-logo.png",
         "placeholder": "Pregunta sobre planes, soporte o servicios de Movistar...",
     },
     "tigo": {
         "nombre": "Tigo",
-        "color": "#00377B",
+        "color": "#7B61FF",
         "emoji": "🟡",
+        "logo": "app/assets/tigo-logo.png",
         "placeholder": "Pregunta sobre planes, soporte o servicios de Tigo...",
     },
 }
@@ -53,24 +58,30 @@ def get_img_tag(path: str, width: str = "auto", extra_style: str = "") -> str:
     b64 = img_to_base64(path)
     if not b64:
         return ""
-    ext = "jpg" if path.endswith(".jpg") else "png"
+    if path.endswith((".jpg", ".jpeg")):
+        ext = "jpg"
+    elif path.endswith(".webp"):
+        ext = "webp"
+    else:
+        ext = "png"
     return f'<img src="data:image/{ext};base64,{b64}" style="width:{width};{extra_style}" />'
 
 
 try:
-    favicon = Image.open(str(ASSETS / "telecom-favicon.ico"))
+    favicon = Image.open(str(ASSETS / "gaia-favicon.ico"))
     st.set_page_config(
-        page_title="Asistente Telecom Colombia",
+        page_title="GAIA — Inteligencia Conversacional",
         page_icon=favicon,
         layout="wide",
     )
 except Exception:
     st.set_page_config(
-        page_title="Asistente Telecom Colombia",
-        page_icon="📡",
+        page_title="GAIA — Inteligencia Conversacional",
+        page_icon="✦",
         layout="wide",
     )
 
+# ── SESSION STATE INIT ────────────────────────────────────────────────────────
 if "session_id" not in st.session_state:
     st.session_state["session_id"] = str(uuid.uuid4())[:8]
 if "sesiones" not in st.session_state:
@@ -79,160 +90,254 @@ if "sesiones" not in st.session_state:
     st.session_state["sesion_actual"] = sid
 if "pregunta_actual" not in st.session_state:
     st.session_state["pregunta_actual"] = ""
+if "limpiar_textarea" not in st.session_state:
+    st.session_state["limpiar_textarea"] = False
 if "operador_actual" not in st.session_state:
     st.session_state["operador_actual"] = "todos"
 
 operador = st.session_state["operador_actual"]
 color_op = OPERADORES[operador]["color"]
 
+# ── ESTILOS GLOBALES ──────────────────────────────────────────────────────────
 st.markdown(f"""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    * {{ font-family: 'Inter', sans-serif; }}
+    @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&display=swap');
+    * {{ font-family: 'Inter Tight', sans-serif; }}
+
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"],
-    section[data-testid="stMain"] > div {{ background-color: #FFFFFF !important; }}
+    section[data-testid="stMain"] > div {{ background-color: #07111F !important; }}
+
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     .stDeployButton {{display: none !important;}}
     header[data-testid="stHeader"] {{display: none !important;}}
     [data-testid="collapsedControl"] {{display: none !important;}}
+
     [data-testid="stSidebar"] {{
-        background-color: #FAFAFA !important;
-        border-right: 1px solid #E2E8F0 !important;
+        background-color: #02060B !important;
+        border-right: 1px solid rgba(255,255,255,0.06) !important;
     }}
-    [data-testid="stSidebar"] * {{ color: #2D3748 !important; }}
+    [data-testid="stSidebar"] * {{ color: #B7C2D0 !important; }}
+
     .sidebar-section {{
-        font-size: 0.7rem; font-weight: 600; color: #A0AEC0 !important;
-        text-transform: uppercase; letter-spacing: 2px; margin: 1rem 0 0.5rem;
+        font-size: 0.65rem; font-weight: 600;
+        color: rgba(183,194,208,0.5) !important;
+        text-transform: uppercase; letter-spacing: 2.5px;
+        margin: 1.2rem 0 0.5rem;
     }}
+
+    /* ── Botones de conversación en sidebar ── */
     [data-testid="stSidebar"] .stButton > button {{
-        background: #F7FAFC !important; color: #2D3748 !important;
-        border: 1.5px solid #E2E8F0 !important; border-radius: 8px !important;
-        font-size: 0.85rem !important; font-weight: 500 !important;
-        text-align: left !important; transition: all 0.2s !important;
+        background: rgba(255,255,255,0.03) !important;
+        color: #B7C2D0 !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+        border-radius: 8px !important;
+        font-size: 0.82rem !important;
+        transition: all 0.35s ease !important;
+        text-align: left !important;
+        box-shadow: none !important;
+        outline: none !important;
     }}
-    .operador-card {{
-        border: 2px solid #E2E8F0; border-radius: 12px; padding: 0.8rem;
-        text-align: center; cursor: pointer; transition: all 0.2s;
-        background: white; margin-bottom: 0.5rem;
+    [data-testid="stSidebar"] .stButton > button:hover {{
+        background: rgba(79,227,224,0.08) !important;
+        border-color: rgba(79,227,224,0.3) !important;
+        color: #4FE3E0 !important;
     }}
-    .operador-card.activo {{
-        border-color: {color_op}; background: {color_op}15;
+    [data-testid="stSidebar"] .stButton > button:focus,
+    [data-testid="stSidebar"] .stButton > button:focus-visible {{
+        outline: none !important;
+        box-shadow: none !important;
+        border-color: rgba(79,227,224,0.2) !important;
     }}
-    .operador-nombre {{ font-size: 0.9rem; font-weight: 600; color: #2D3748; }}
-    .hero-section {{
-        padding: 0.5rem 0 1rem; text-align: center; margin-bottom: 0.5rem;
+
+    /* ── Logo de operador centrado sobre el botón ── */
+    .op-logo-box {{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 48px;
+        margin-bottom: 0px;
     }}
-    .hero-section h1 {{ color: #1A1A2E; font-size: 1.8rem; font-weight: 700; margin: 0; }}
-    .hero-section p {{ color: #718096; font-size: 0.9rem; margin-top: 0.3rem; }}
+    .op-logo-box img {{
+        height: 28px;
+        object-fit: contain;
+        max-width: 80px;
+        pointer-events: none;
+        filter: drop-shadow(0 0 6px rgba(255,255,255,0.15));
+    }}
+
+    /* Botones de operador con estado activo via clase CSS */
+    .op-btn-activo .stButton > button {{
+        border-color: var(--op-color, rgba(79,227,224,0.6)) !important;
+        background: var(--op-bg, rgba(79,227,224,0.08)) !important;
+        box-shadow: 0 0 18px var(--op-glow, rgba(79,227,224,0.2)) !important;
+        color: #F8FBFF !important;
+        font-weight: 700 !important;
+    }}
+
+    /* ── Botón principal ── */
+    .stButton > button {{
+        background: rgba(255,255,255,0.04) !important;
+        color: #B7C2D0 !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+        border-radius: 8px !important;
+        font-size: 0.82rem !important;
+        transition: all 0.35s ease !important;
+        text-align: left !important;
+    }}
+    .stButton > button:hover {{
+        background: rgba(79,227,224,0.08) !important;
+        border-color: rgba(79,227,224,0.3) !important;
+        color: #4FE3E0 !important;
+    }}
+    .stButton > button:focus,
+    .stButton > button:focus-visible {{
+        outline: none !important;
+        box-shadow: none !important;
+    }}
+    .stButton > button[kind="primary"] {{
+        background: linear-gradient(90deg, #4FE3E0 0%, #5DA8FF 45%, #7B61FF 100%) !important;
+        color: white !important;
+        border: none !important;
+        font-size: 0.95rem !important;
+        font-weight: 600 !important;
+        border-radius: 99px !important;
+        box-shadow: 0 4px 24px rgba(79,227,224,0.25) !important;
+        text-align: center !important;
+        opacity: 1 !important;
+        height: auto !important;
+        min-height: auto !important;
+        margin-top: 0 !important;
+    }}
+
+    .stTextArea textarea {{
+        background: rgba(255,255,255,0.04) !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+        border-radius: 12px !important;
+        color: #F8FBFF !important;
+        font-size: 0.9rem !important;
+    }}
+    .stTextArea textarea:focus {{
+        border-color: rgba(79,227,224,0.4) !important;
+        box-shadow: 0 0 0 3px rgba(79,227,224,0.1) !important;
+    }}
+    .stTextArea textarea::placeholder {{
+        color: rgba(183,194,208,0.4) !important;
+    }}
+
+    .hero-section {{ padding: 0.5rem 0 1.5rem; text-align: center; }}
+    .hero-section h1 {{
+        color: #F8FBFF; font-size: 2rem; font-weight: 800;
+        margin: 0 0 0.3rem; letter-spacing: -0.5px;
+    }}
+    .hero-gradient-text {{
+        background: linear-gradient(90deg, #4FE3E0 0%, #5DA8FF 45%, #7B61FF 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text; font-size: 2rem; font-weight: 800;
+    }}
+    .hero-section p {{ color: #B7C2D0; font-size: 0.9rem; margin-top: 0.5rem; }}
+
     .status-ok {{
-        background: #F0FFF4; border: 1px solid #9AE6B4;
-        border-left: 4px solid #38A169; border-radius: 10px;
-        padding: 0.55rem 1rem; color: #276749; font-size: 0.82rem;
+        background: rgba(79,227,224,0.08); border: 1px solid rgba(79,227,224,0.2);
+        border-left: 3px solid #4FE3E0; border-radius: 10px;
+        padding: 0.55rem 1rem; color: #4FE3E0; font-size: 0.82rem;
         font-weight: 500; margin-bottom: 1rem;
     }}
     .status-err {{
-        background: #FFF5F5; border: 1px solid #FEB2B2;
-        border-left: 4px solid #E53E3E; border-radius: 10px;
-        padding: 0.55rem 1rem; color: #C53030; font-size: 0.82rem; margin-bottom: 1rem;
+        background: rgba(255,80,80,0.08); border: 1px solid rgba(255,80,80,0.2);
+        border-left: 3px solid #FF5050; border-radius: 10px;
+        padding: 0.55rem 1rem; color: #FF8080; font-size: 0.82rem;
+        margin-bottom: 1rem;
     }}
+
     .section-title {{
-        font-size: 0.95rem; font-weight: 600; color: #1A1A2E; margin: 1.2rem 0 0.6rem;
+        font-size: 0.75rem; font-weight: 600; color: rgba(183,194,208,0.6);
+        text-transform: uppercase; letter-spacing: 2px; margin: 1.5rem 0 0.8rem;
     }}
-    .stButton > button {{
-        background: white !important; color: #4A5568 !important;
-        border: 1.5px solid #E2E8F0 !important; border-radius: 6px !important;
-        font-size: 0.82rem !important; transition: all 0.2s !important;
-        text-align: left !important; box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
-    }}
-    .stButton > button[kind="primary"] {{
-        background: {color_op} !important; color: white !important;
-        border: none !important; font-size: 0.95rem !important;
-        font-weight: 600 !important; border-radius: 99px !important;
-        box-shadow: 0 3px 12px {color_op}40 !important;
-        text-align: center !important;
-    }}
-    .stTextArea textarea {{
-        border: 1.5px solid #E2E8F0 !important; border-radius: 12px !important;
-        background: #FAFAFA !important; font-size: 0.9rem !important;
-    }}
-    .stTextArea textarea:focus {{
-        border-color: {color_op} !important;
-        box-shadow: 0 0 0 3px {color_op}25 !important;
-    }}
+
     .chat-user {{
-        background: #F7FAFC; border-radius: 12px 12px 2px 12px;
-        padding: 0.75rem 1rem; margin: 0.5rem 0;
-        font-size: 0.9rem; color: #2D3748; text-align: right;
+        background: rgba(79,227,224,0.08); border: 1px solid rgba(79,227,224,0.15);
+        border-radius: 12px 12px 2px 12px; padding: 0.75rem 1rem;
+        margin: 0.5rem 0; font-size: 0.9rem; color: #F8FBFF !important;
+        text-align: right;
     }}
     .chat-bot {{
-        background: #F8F9FA; border: 1px solid #E2E8F0;
-        border-left: 4px solid {color_op};
-        border-radius: 2px 12px 12px 12px; padding: 0.75rem 1rem;
-        margin: 0.5rem 0; font-size: 0.9rem; color: #2D3748; line-height: 1.7;
+        background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+        border-left: 3px solid {color_op}; border-radius: 2px 12px 12px 12px;
+        padding: 0.75rem 1rem; margin: 0.5rem 0; font-size: 0.9rem;
+        color: #B7C2D0; line-height: 1.8;
     }}
-    .chat-meta {{ font-size: 0.7rem; color: #A0AEC0; margin-top: 0.3rem; }}
+    .chat-meta {{ font-size: 0.68rem; color: rgba(183,194,208,0.4); margin-top: 0.4rem; }}
+
     .respuesta-box {{
-        background: white; border: 1.5px solid #E2E8F0;
-        border-top: 4px solid {color_op}; border-radius: 16px;
-        padding: 1.5rem; margin-top: 1rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+        border-top: 2px solid {color_op}; border-radius: 16px;
+        padding: 1.5rem; margin-top: 1rem; box-shadow: 0 8px 40px rgba(0,0,0,0.3);
     }}
     .respuesta-label {{
-        font-size: 0.7rem; font-weight: 600; color: {color_op};
-        text-transform: uppercase; letter-spacing: 2px; margin-bottom: 0.75rem;
+        font-size: 0.65rem; font-weight: 700; color: {color_op};
+        text-transform: uppercase; letter-spacing: 2.5px; margin-bottom: 0.75rem;
     }}
-    .respuesta-text {{ color: #2D3748; line-height: 1.8; font-size: 0.95rem; }}
+    .respuesta-text {{ color: #F8FBFF; line-height: 1.9; font-size: 0.92rem; }}
+
     .metrics-row {{
         display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 1rem;
     }}
     .metric-card {{
-        background: #FAFAFA; border: 1px solid #E2E8F0;
+        background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
         border-radius: 12px; padding: 0.75rem; text-align: center;
     }}
-    .metric-val {{ font-size:1rem; font-weight:700; color:{color_op}; display:block; }}
-    .metric-lbl {{ font-size:0.68rem; color:#A0AEC0; margin-top:2px; display:block; }}
+    .metric-val {{ font-size: 0.95rem; font-weight: 700; color: {color_op}; display: block; }}
+    .metric-lbl {{
+        font-size: 0.65rem; color: rgba(183,194,208,0.5); margin-top: 2px;
+        display: block; text-transform: uppercase; letter-spacing: 1px;
+    }}
+
     .custom-divider {{
         height: 1px;
-        background: linear-gradient(to right, transparent, #E2E8F0, transparent);
-        margin: 1.2rem 0;
+        background: linear-gradient(to right, transparent, rgba(255,255,255,0.08), transparent);
+        margin: 1.5rem 0;
     }}
     .footer {{
-        text-align: center; background: #1A1A1A; color: #FFFFFF;
-        font-size: 0.9rem; margin-top: 2rem; padding: 1.2rem;
-        border-radius: 10px;
+        text-align: center; background: rgba(2,6,11,0.8);
+        border: 1px solid rgba(255,255,255,0.06); color: rgba(183,194,208,0.5);
+        font-size: 0.8rem; margin-top: 1.5rem; padding: 1.2rem;
+        border-radius: 12px; letter-spacing: 0.5px;
     }}
 </style>
 """, unsafe_allow_html=True)
 
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 📡 Telecom Colombia")
-    st.markdown('<div class="sidebar-section">Selecciona operador</div>', unsafe_allow_html=True)
+    logo_tag = get_img_tag(
+        str(ASSETS / "gaia-logo.png"),
+        width="180px",
+        extra_style="margin-bottom:1.5rem;display:block;"
+    )
+    if logo_tag:
+        st.markdown(logo_tag, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="font-size:2rem;font-weight:800;
+            background:linear-gradient(90deg,#4FE3E0,#7B61FF);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+            margin-bottom:1.5rem;">✦ GAIA</div>
+        """, unsafe_allow_html=True)
 
-    for key, op in OPERADORES.items():
-        activo = "activo" if st.session_state["operador_actual"] == key else ""
-        if st.button(
-            f"{op['emoji']} {op['nombre']}",
-            key=f"op_{key}",
-            use_container_width=True,
-        ):
-            st.session_state["operador_actual"] = key
-            st.session_state["pregunta_actual"] = ""
-            st.rerun()
-
-    st.markdown("---")
     st.markdown('<div class="sidebar-section">Conversaciones</div>', unsafe_allow_html=True)
 
     if st.button("+ Nueva conversación", use_container_width=True, key="nueva_sidebar"):
         nuevo_sid = str(uuid.uuid4())[:8]
-        st.session_state["sesiones"][nuevo_sid] = {"nombre": "Nueva conversación", "historial": []}
+        st.session_state["sesiones"][nuevo_sid] = {
+            "nombre": "Nueva conversación", "historial": []
+        }
         st.session_state["sesion_actual"] = nuevo_sid
         st.session_state["session_id"] = nuevo_sid
         st.session_state["pregunta_actual"] = ""
+        st.session_state["textarea_principal"] = ""
+        st.session_state["operador_actual"] = "todos"
         st.rerun()
 
-    st.markdown("---")
     for sid, datos in list(st.session_state["sesiones"].items()):
         if not datos["historial"]:
             continue
@@ -241,27 +346,123 @@ with st.sidebar:
             st.session_state["session_id"] = sid
             st.rerun()
 
+    st.markdown("---")
+    st.markdown('<div class="sidebar-section">Operador</div>', unsafe_allow_html=True)
+
+    # ── Selector de operadores ────────────────────────────────────────────────
+    # Logo: imagen decorativa pura, sin bordes ni interacción.
+    # Botón: solo el texto del nombre, con estilo activo/inactivo.
+    for key, op in OPERADORES.items():
+        activo      = st.session_state["operador_actual"] == key
+        border_color = f"{op['color']}90" if activo else "rgba(255,255,255,0.10)"
+        bg_color     = f"{op['color']}12" if activo else "rgba(255,255,255,0.03)"
+        glow_shadow  = f"0 0 16px {op['color']}30" if activo else "none"
+        font_weight  = "700" if activo else "500"
+        text_color   = op['color'] if activo else "#B7C2D0"
+
+        # Logo/emoji — puro HTML decorativo, sin bordes ni fondo
+        logo_inner = ""
+        if op.get("logo"):
+            b64 = img_to_base64(op["logo"])
+            if b64:
+                logo_inner = (
+                    f'<img src="data:image/png;base64,{b64}" '
+                    f'style="height:26px;object-fit:contain;max-width:75px;" />'
+                )
+        if not logo_inner:
+            logo_inner = f'<span style="font-size:1.3rem;">{op["emoji"]}</span>'
+
+        st.markdown(f"""
+        <div style="display:flex;justify-content:center;align-items:center;
+                    height:36px;margin-bottom:2px;">
+            {logo_inner}
+        </div>
+        """, unsafe_allow_html=True)
+
+        # CSS para este botón específico (activo/inactivo)
+        st.markdown(f"""
+        <style>
+            div[data-testid="stSidebar"]
+            div[data-testid="stButton"]:has(button[data-testid="baseButton-secondary"][aria-label="{op['nombre']}"])
+            button {{
+                border-color: {border_color} !important;
+                background: {bg_color} !important;
+                box-shadow: {glow_shadow} !important;
+                color: {text_color} !important;
+                font-weight: {font_weight} !important;
+                text-align: center !important;
+                border-radius: 8px !important;
+                font-size: 0.82rem !important;
+            }}
+        </style>
+        """, unsafe_allow_html=True)
+
+        if st.button(op["nombre"], key=f"op_{key}", use_container_width=True):
+            st.session_state["operador_actual"] = key
+            st.session_state["pregunta_actual"] = ""
+            st.rerun()
+
+        st.markdown("<div style='margin-bottom:6px'></div>", unsafe_allow_html=True)
+
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 op_info = OPERADORES[st.session_state["operador_actual"]]
 
+# Banner
+banner_tag = get_img_tag(
+    str(ASSETS / "gaia-banner.png"),
+    width="100%",
+    extra_style="display:block;width:100%;height:auto;"
+)
+if banner_tag:
+    st.markdown(f"""
+    <div style="border-radius:16px;overflow:hidden;margin-bottom:1.5rem;
+        box-shadow:0 8px 40px rgba(0,0,0,0.4);">{banner_tag}</div>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown(f"""
+    <div style="background:linear-gradient(135deg,#07111F 0%,#0D1F3C 60%,#07111F 100%);
+        border:1px solid rgba(79,227,224,0.15);border-radius:16px;
+        padding:4rem 3rem;margin-bottom:1.5rem;overflow:hidden;
+        box-shadow:0 8px 40px rgba(0,0,0,0.4);">
+        <p style="font-size:0.7rem;font-weight:600;color:#4FE3E0;
+            text-transform:uppercase;letter-spacing:3px;margin-bottom:1rem;">
+            ✦ IA CONVERSACIONAL CENTRADA EN EL USUARIO
+        </p>
+        <h2 style="color:#F8FBFF;font-size:2.5rem;font-weight:800;margin:0 0 0.2rem;">
+            Conversaciones más humanas.
+        </h2>
+        <h2 style="background:linear-gradient(90deg,#4FE3E0,#5DA8FF,#7B61FF);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+            font-size:2.5rem;font-weight:800;margin:0 0 1.2rem;">
+            Soluciones más inteligentes.
+        </h2>
+        <p style="color:#B7C2D0;font-size:0.95rem;">
+            Plataforma conversacional impulsada por GenAI y RAG multimodal
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Hero
 st.markdown(f"""
 <div class="hero-section">
-    <h1>{op_info['emoji']} Asistente Telecom Colombia</h1>
-    <p>Servicio al cliente · {op_info['nombre']}</p>
+    <h1>Asistente <span class="hero-gradient-text">GAIA</span></h1>
+    <p>Inteligencia conversacional · {op_info['nombre']}</p>
 </div>
 """, unsafe_allow_html=True)
 
+# Status API
 try:
     health = requests.get(HEALTH_URL, timeout=3)
     if health.status_code == 200:
-        st.markdown('<div class="status-ok">✅ Sistema conectado y funcionando</div>', unsafe_allow_html=True)
+        st.markdown('<div class="status-ok">✦ Sistema conectado y operando correctamente</div>',
+                    unsafe_allow_html=True)
     else:
-        st.markdown('<div class="status-err">⚠️ Estado inesperado de la API</div>', unsafe_allow_html=True)
+        st.markdown('<div class="status-err">⚠ Estado inesperado de la API</div>',
+                    unsafe_allow_html=True)
 except Exception:
     st.markdown(f"""
-    <div class="status-err">
-        ⚡ API no disponible —
-        <code>uvicorn api.main:app --reload --host 127.0.0.1 --port 8081</code>
+    <div class="status-err">⚡ API no disponible —
+        <code>uvicorn api.main:app --reload --host 127.0.0.1 --port 8082</code>
     </div>""", unsafe_allow_html=True)
 
 # Historial
@@ -272,15 +473,16 @@ if historial_actual:
     st.markdown('<div class="section-title">Conversación</div>', unsafe_allow_html=True)
     for msg in historial_actual:
         if msg["role"] == "user":
-            st.markdown(f'<div class="chat-user">🧑 {msg["content"]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="chat-user">{msg["content"]}</div>',
+                        unsafe_allow_html=True)
         else:
             st.markdown(
                 f'<div class="chat-bot">{msg["content"]}'
-                f'<div class="chat-meta">⏱️ {msg.get("latencia", "")}s · {MODELO_ACTIVO}</div>'
+                f'<div class="chat-meta">⏱ {msg.get("latencia","")}s · {MODELO_ACTIVO} · GAIA</div>'
                 f'</div>', unsafe_allow_html=True)
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 
-# Preguntas sugeridas por operador
+# Preguntas sugeridas
 PREGUNTAS = {
     "todos": [
         "¿Cómo hago la portabilidad numérica?",
@@ -322,29 +524,34 @@ cols = st.columns(3)
 for i, ejemplo in enumerate(preguntas):
     if cols[i % 3].button(ejemplo, key=f"ej_{i}", use_container_width=True):
         st.session_state["pregunta_actual"] = ejemplo
+        st.session_state["textarea_principal"] = ejemplo
 
 st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-
 st.markdown('<div class="section-title">Tu consulta</div>', unsafe_allow_html=True)
+
+# Si venimos de un envío exitoso, limpiar el textarea
+if st.session_state.get("limpiar_textarea", False):
+    st.session_state["pregunta_actual"] = ""
+    st.session_state["textarea_principal"] = ""
+    st.session_state["limpiar_textarea"] = False
 
 pregunta = st.text_area(
     label="Pregunta",
-    value=st.session_state.get("pregunta_actual", ""),
     placeholder=op_info["placeholder"],
     height=110,
     label_visibility="collapsed",
+    key="textarea_principal",
 )
 
-consultar = st.button("Consultar ✨", type="primary", use_container_width=True)
+consultar = st.button("Consultar con GAIA ✦", type="primary", use_container_width=True)
 
 if consultar and pregunta.strip():
-    # Enriquecer pregunta con contexto del operador
     operador_sel = st.session_state["operador_actual"]
     pregunta_enriquecida = pregunta.strip()
     if operador_sel != "todos":
         pregunta_enriquecida = f"[{OPERADORES[operador_sel]['nombre']}] {pregunta.strip()}"
 
-    with st.spinner("Buscando información y generando respuesta..."):
+    with st.spinner("GAIA está procesando tu consulta..."):
         try:
             response = requests.post(
                 API_URL,
@@ -360,8 +567,9 @@ if consultar and pregunta.strip():
             else:
                 sid = st.session_state["sesion_actual"]
                 if sid not in st.session_state["sesiones"]:
-                    st.session_state["sesiones"][sid] = {"nombre": "Nueva conversación", "historial": []}
-
+                    st.session_state["sesiones"][sid] = {
+                        "nombre": "Nueva conversación", "historial": []
+                    }
                 st.session_state["sesiones"][sid]["historial"].append({
                     "role": "user", "content": pregunta.strip()
                 })
@@ -373,40 +581,67 @@ if consultar and pregunta.strip():
                 if len(st.session_state["sesiones"][sid]["historial"]) == 2:
                     st.session_state["sesiones"][sid]["nombre"] = pregunta.strip()[:30]
 
-                st.session_state["pregunta_actual"] = ""
+                st.session_state["limpiar_textarea"] = True
 
                 st.markdown(f"""
                 <div class="respuesta-box">
-                    <div class="respuesta-label">Respuesta — {op_info['nombre']}</div>
+                    <div class="respuesta-label">✦ GAIA · {op_info['nombre']}</div>
                     <div class="respuesta-text">{result['respuesta']}</div>
                 </div>
                 <div class="metrics-row">
                     <div class="metric-card">
                         <span class="metric-val">{result['latencia_segundos']}s</span>
-                        <span class="metric-lbl">Tiempo de respuesta</span>
+                        <span class="metric-lbl">Latencia</span>
                     </div>
                     <div class="metric-card">
-                        <span class="metric-val">3 operadores</span>
-                        <span class="metric-lbl">Fuentes indexadas</span>
+                        <span class="metric-val">3</span>
+                        <span class="metric-lbl">Operadores</span>
                     </div>
                     <div class="metric-card">
-                        <span class="metric-val">{MODELO_ACTIVO}</span>
-                        <span class="metric-lbl">Modelo activo</span>
+                        <span class="metric-val">RAG</span>
+                        <span class="metric-lbl">Motor</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
                 st.rerun()
 
         except requests.exceptions.ConnectionError:
-            st.error("❌ No se pudo conectar con la API en :8081")
+            st.error("❌ No se pudo conectar con la API en :8082")
         except requests.exceptions.Timeout:
             st.warning("⏳ La consulta tardó demasiado. Intenta de nuevo.")
 
 elif consultar and not pregunta.strip():
     st.warning("Escribe una pregunta antes de consultar.")
 
+# Footer brands
+brands_path = str(ASSETS / "gaia-footer-brands.png")
+try:
+    with open(brands_path, "rb") as f:
+        b64_brands = base64.b64encode(f.read()).decode()
+    st.markdown(f"""
+    <div style="border-radius:16px;overflow:hidden;margin-top:2rem;
+        box-shadow:0 4px 30px rgba(0,0,0,0.3);">
+        <img src="data:image/png;base64,{b64_brands}"
+             style="width:100%;display:block;"/>
+    </div>
+    """, unsafe_allow_html=True)
+except FileNotFoundError:
+    st.markdown("""
+    <div style="background:rgba(2,6,11,0.8);border:1px solid rgba(255,255,255,0.06);
+        border-radius:16px;padding:1.5rem 2rem;margin-top:2rem;text-align:center;">
+        <p style="color:rgba(183,194,208,0.4);font-size:0.7rem;
+            text-transform:uppercase;letter-spacing:2px;margin-bottom:1rem;">
+            Empresas que confían en GAIA
+        </p>
+        <p style="color:rgba(183,194,208,0.6);font-size:0.9rem;">
+            Tigo · WOM · Movistar · DirecTV · Claro · ETB · y muchas más
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Footer
 st.markdown("""
 <div class="footer">
-    Claro · Movistar · Tigo · Servicio al Cliente · Colombia · 2026
+    ® GAIA - Inteligencia Conversacional · Colombia · 2026
 </div>
 """, unsafe_allow_html=True)

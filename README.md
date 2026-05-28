@@ -1,176 +1,357 @@
-# 🪄 Recamier Chatbot — RAG + MLOps
+# GAIA — Asistente Conversacional de Telecomunicaciones
 
-Chatbot inteligente para **Recamier** y **Salon In Professional** construido con:
-- **Web Scraping** anti-detección (httpx + Playwright)
-- **RAG** con ChromaDB + Ollama embeddings
-- **LangGraph** para routing inteligente (direct / product / rag)
-- **Mistral AI** como LLM
-- **MLflow** para tracking, métricas y evaluación
-- **Streamlit** para la interfaz de usuario
-- **FastAPI** para la API REST
-- **Prometheus + Grafana** para monitoreo
+## Descripción General
+
+GAIA es una plataforma conversacional inteligente desarrollada para el servicio al cliente de operadores de telecomunicaciones en Colombia. El sistema integra recuperación aumentada de generación (RAG), arquitectura de grafos conversacionales con LangGraph, y principios de Human-Centered AI (HCAI) y GenAI UX para ofrecer una experiencia empática, contextual y centrada en el usuario.
+
+El proyecto es parte de una investigación académica sobre experiencia de usuario en sistemas de inteligencia artificial generativa, orientada a evaluar métricas como NPS, SUS, empatía percibida y satisfacción conversacional en comparación con chatbots tradicionales.
+
+Los operadores cubiertos son Claro, Movistar y Tigo.
 
 ---
 
-## 🏗️ Arquitectura
+## Arquitectura del Sistema
+
+El sistema se compone de tres capas principales: la interfaz de usuario (Streamlit), la capa de API (FastAPI), y el motor de inteligencia conversacional (LangGraph + RAG).
+
+### Flujo conversacional
 
 ```
-Usuario → Streamlit → FastAPI → LangGraph
-                                    ├── classify_node (router LLM)
-                                    ├── direct_node   (social / follow-up)
-                                    ├── product_node  (catálogo JSON)
-                                    ├── retrieve_node (ChromaDB RAG)
-                                    └── generate_node (Mistral)
-                                              ↓
-                                         MLflow Tracing
+Usuario
+   |
+Streamlit (interfaz web)
+   |
+FastAPI (API REST)
+   |
+LangGraph (grafo conversacional)
+   |
+   +-- classify_node   (router de intenciones con deteccion emocional)
+   |
+   +-- direct_node     (respuestas sociales, empaticas y de acompanamiento)
+   |
+   +-- product_node    (consultas comerciales, planes y tarifas)
+   |
+   +-- retrieve_node   (busqueda semantica en ChromaDB)
+   |
+   +-- generate_node   (generacion de respuesta con Mistral AI)
+                |
+           MLflow Tracing
 ```
 
-**Pipeline de datos:**
+### Pipeline de datos
+
 ```
-recamier.com          ┐
-saloninprofessional.com┘ → scraper.py → data/processed/*.txt
-                                              ↓
-                                         ingest.py → ChromaDB (vectorstore/)
+Web Scraping
+   |
+   +-- claro.com.co
+   +-- movistar.com.co
+   +-- tigo.com.co / ayuda.tigo.com.co
+   |
+Procesamiento de texto (src/scraper.py)
+   |
+data/processed/*.txt
+   |
+Chunking + Embeddings (src/ingest.py)
+   |
+ChromaDB (vectorstore/)
 ```
 
 ---
 
-## 🚀 Inicio rápido
+## Tecnologias Utilizadas
 
-### 1. Configurar entorno
+| Componente | Tecnologia |
+|---|---|
+| Interfaz de usuario | Streamlit |
+| API REST | FastAPI + Uvicorn |
+| Motor conversacional | LangGraph |
+| Modelo de lenguaje | Mistral AI (mistral-small-latest) |
+| Embeddings | Ollama (nomic-embed-text) |
+| Base de datos vectorial | ChromaDB |
+| Web scraping | httpx + Playwright + BeautifulSoup4 |
+| Tracking y metricas | MLflow |
+| Memoria conversacional | SQLite |
+| Monitoreo | Prometheus + Grafana |
+| Gestion de dependencias | uv + pip |
+| Entorno | Python 3.11 |
+
+---
+
+## Estructura del Proyecto
+
+```
+telecom-chatbot/
+|
++-- app/
+|   +-- assets/                  Logos, imagenes, favicon, banner
+|   +-- streamlit_app.py         Interfaz GAIA con selector de operadores
+|
++-- api/
+|   +-- main.py                  FastAPI con endpoints /ask y /ask/graph
+|   +-- __init__.py
+|
++-- src/
+|   +-- config.py                Configuracion centralizada desde .env
+|   +-- scraper.py               Web scraper anti-deteccion con seed URLs
+|   +-- ingest.py                Chunking, embeddings y construccion de ChromaDB
+|   +-- rag_chain.py             Pipeline RAG simple con MLflow tracing
+|   +-- memory.py                Memoria persistente en SQLite
+|   +-- evaluate.py              Evaluacion del sistema RAG con metricas
+|   +-- product_catalog.json     Datos estructurados de operadores
+|   +-- __init__.py
+|   |
+|   +-- graph/
+|       +-- state.py             Definicion del estado LangGraph (ChatState)
+|       +-- nodes.py             Nodos del grafo: classify, direct, product, retrieve, generate
+|       +-- build.py             Compilacion del grafo con checkpointer SQLite
+|       +-- __init__.py
+|
++-- data/
+|   +-- raw/                     Datos crudos (no versionados)
+|   +-- processed/               Archivos .txt generados por el scraper
+|
++-- vectorstore/                 ChromaDB persistido (generado, no versionado)
++-- reports/
+|   +-- evaluation/              Resultados JSON de evaluacion RAG
+|
++-- docker/
+|   +-- prometheus.yml           Configuracion de Prometheus
+|
++-- tests/
+|   +-- test_scraper.py          Tests unitarios del scraper
+|   +-- test_api.py              Tests basicos de la API
+|
++-- main.py                      Orquestador del pipeline completo
++-- requirements.txt             Dependencias del proyecto
++-- docker-compose.yml           Prometheus + Grafana
++-- Makefile                     Comandos de gestion del proyecto
++-- .env.example                 Plantilla de variables de entorno
++-- .gitignore
++-- README.md
+```
+
+---
+
+## Arquitectura Conversacional
+
+### Router de intenciones
+
+El nodo `classify_node` analiza cada mensaje del usuario y determina una de tres rutas posibles:
+
+- **direct**: saludos, despedidas, agradecimientos, expresiones emocionales, frustraciones generales, referencias a turnos anteriores, temas fuera del dominio de telecomunicaciones.
+- **product**: consultas sobre planes, precios, tarifas, portabilidad numerica, puntos de atencion, activacion o cancelacion de servicios.
+- **rag**: soporte tecnico, facturacion, recargas, autogestion, preguntas frecuentes, cobertura, procedimientos paso a paso.
+
+El router tambien detecta senales emocionales implicitas como frustracion, urgencia o confusion para priorizar respuestas empaticas antes que tecnicas.
+
+### Principios de GenAI UX y Human-Centered AI
+
+Los prompts del sistema implementan los siguientes principios:
+
+- Empatia conversacional: validacion emocional ante frustracion o urgencia antes de responder tecnicamente.
+- UX Writing: lenguaje claro, simple, sin tecnicismos, con frases cortas y conversacionales.
+- Adaptacion de tono: soporte tecnico (empatico y guiado), facturacion (claro y tranquilizador), consulta comercial (orientador), frustracion (contencion primero, solucion despues).
+- Fallback humanizado: cuando la informacion no esta disponible, se orienta al usuario con calidez y se mantiene el acompanamiento conversacional.
+- Continuidad conversacional: el historial se aprovecha para mantener coherencia sin tratar cada mensaje como una consulta nueva.
+- Grounding estricto: no se inventa informacion. Las respuestas se basan exclusivamente en el contexto recuperado de ChromaDB.
+
+### Endpoints de la API
+
+| Endpoint | Descripcion |
+|---|---|
+| GET /health | Estado del sistema |
+| POST /ask | Pipeline RAG simple (sin LangGraph) |
+| POST /ask/graph | Pipeline con LangGraph (router + memoria checkpointer) |
+
+La interfaz Streamlit apunta al endpoint `/ask/graph` para aprovechar el router inteligente y la memoria de sesion.
+
+---
+
+## Web Scraping
+
+El modulo `src/scraper.py` implementa un crawler BFS (Breadth-First Search) con las siguientes caracteristicas anti-deteccion:
+
+- Rotacion de User-Agents con pool de navegadores reales (Chrome, Firefox, Edge, Safari).
+- Cabeceras HTTP completas que imitan un navegador Chrome real, incluyendo Sec-CH-UA, Sec-Fetch-Dest y Accept-Language en espanol colombiano.
+- Delays aleatorios configurables entre peticiones (SCRAPE_DELAY_MIN y SCRAPE_DELAY_MAX).
+- Reintento con backoff exponencial usando la libreria tenacity (hasta 3 intentos).
+- Playwright como fallback para paginas que requieren JavaScript.
+- Semaforo de concurrencia configurable (SCRAPE_CONCURRENCY).
+- Filtros de URLs: extensiones estaticas, patrones de WordPress, carrito de compras, feeds, administracion.
+- Extraccion de texto limpio: elimina scripts, estilos, navegacion, footer, cookies, popups y ads.
+- Deduplicacion de lineas consecutivas en el texto extraido.
+
+### Sitios scrapeados
+
+| Operador | URLs semilla |
+|---|---|
+| Claro | claro.com.co/personas/faqs/, claro.com.co/personas/autogestion/, claro.com.co/personas/servicios/, claro.com.co/personas/legal-y-regulatorio/ |
+| Movistar | movistar.com.co/atencion-al-cliente/, descubre.movistar.co/atencion-cliente/, movistar.com.co/procesos-autogestion |
+| Tigo | tigo.com.co/preguntas-frecuentes-servicios-tigo, ayuda.tigo.com.co/hc/centro-de-ayuda/es |
+
+---
+
+## Configuracion y Variables de Entorno
+
+Copia el archivo `.env.example` a `.env` y configura las variables necesarias.
+
+| Variable | Descripcion | Valor por defecto |
+|---|---|---|
+| MISTRAL_API_KEY | Clave API de Mistral AI | Requerida |
+| MISTRAL_MODEL | Modelo de Mistral a utilizar | mistral-small-latest |
+| OLLAMA_HOST | URL del servidor Ollama | http://localhost:11434 |
+| OLLAMA_EMBEDDING_MODEL | Modelo de embeddings | nomic-embed-text |
+| CHUNK_SIZE | Tamano de chunks en caracteres | 700 |
+| CHUNK_OVERLAP | Solapamiento entre chunks | 100 |
+| RETRIEVER_K | Documentos recuperados por consulta | 4 |
+| MIN_SCORE | Score minimo de similitud | 0.35 |
+| SCRAPE_CONCURRENCY | Conexiones simultaneas del scraper | 3 |
+| SCRAPE_MAX_PAGES | Paginas maximas por sitio | 500 |
+| SCRAPE_DELAY_MIN | Delay minimo entre peticiones (segundos) | 1.2 |
+| SCRAPE_DELAY_MAX | Delay maximo entre peticiones (segundos) | 3.5 |
+| MLFLOW_TRACKING_URI | URL del servidor MLflow | http://127.0.0.1:5000 |
+| EXPERIMENT_NAME | Nombre del experimento en MLflow | telecom-chatbot-rag |
+| API_HOST | Host de la API | 0.0.0.0 |
+| API_PORT | Puerto de la API | 8082 |
+
+---
+
+## Instalacion y Ejecucion
+
+### Requisitos previos
+
+- Python 3.11
+- uv (gestor de dependencias)
+- Ollama instalado y corriendo con el modelo nomic-embed-text
+- Cuenta en Mistral AI con clave API activa
+- Docker (opcional, para Prometheus y Grafana)
+
+### Paso 1 — Configurar entorno
 
 ```bash
 cp .env.example .env
-# Edita .env y agrega tu MISTRAL_API_KEY
+# Editar .env y configurar MISTRAL_API_KEY y demas variables
 ```
 
-### 2. Instalar dependencias
+### Paso 2 — Crear entorno virtual e instalar dependencias
 
 ```bash
-make setup
-# o manualmente:
-pip install -r requirements.txt
+uv venv .venv
+.venv\Scripts\activate       # Windows
+source .venv/bin/activate    # Linux / macOS
+
+uv pip install -r requirements.txt
 playwright install chromium
 ```
 
-### 3. Iniciar MLflow
+### Paso 3 — Descargar modelo de embeddings
 
 ```bash
-make mlflow
-# → http://127.0.0.1:5000
+ollama pull nomic-embed-text
 ```
 
-### 4. Ejecutar el pipeline completo
+### Paso 4 — Iniciar MLflow
 
 ```bash
-# Opción A: Todo de una vez
-make pipeline
-
-# Opción B: Paso a paso
-make scrape    # Web scraping (~15-30 min)
-make ingest    # Generar vectorstore (~5-15 min)
+mlflow server --host 127.0.0.1 --port 5002
 ```
 
-### 5. Levantar los servicios
+### Paso 5 — Ejecutar el scraping
 
 ```bash
-# Terminal 1: API
-make api
-
-# Terminal 2: Streamlit
-make streamlit
-
-# Terminal 3 (opcional): Prometheus + Grafana
-make docker-up
+python -m src.scraper
 ```
 
-Acceder a:
-- **Streamlit**: http://localhost:8501
-- **API Docs**: http://127.0.0.1:8080/docs
-- **MLflow**: http://127.0.0.1:5000
-- **Grafana**: http://localhost:3000 (admin/admin)
+Este proceso puede tardar entre 30 y 60 minutos dependiendo del numero de paginas configurado. Al finalizar genera los archivos `claro_content.txt`, `movistar_content.txt` y `tigo_content.txt` en `data/processed/`.
 
----
-
-## 📁 Estructura del proyecto
-
-```
-recamier-chatbot/
-├── app/
-│   ├── assets/              # Logos, imágenes
-│   └── streamlit_app.py     # Interfaz Streamlit
-├── api/
-│   └── main.py              # FastAPI + LangGraph
-├── src/
-│   ├── config.py            # Configuración centralizada
-│   ├── scraper.py           # Web scraper anti-detección
-│   ├── ingest.py            # Chunking + ChromaDB
-│   ├── rag_chain.py         # Pipeline RAG con MLflow
-│   ├── memory.py            # Memoria SQLite
-│   ├── evaluate.py          # Evaluación RAG
-│   ├── product_catalog.json # Datos estructurados
-│   └── graph/
-│       ├── state.py         # Estado LangGraph
-│       ├── nodes.py         # Nodos del grafo
-│       └── build.py         # Compilación del grafo
-├── data/
-│   ├── raw/                 # Datos crudos
-│   └── processed/           # Texto procesado del scraping
-├── vectorstore/             # ChromaDB (generado)
-├── reports/evaluation/      # Métricas de evaluación
-├── docker/
-│   └── prometheus.yml
-├── docker-compose.yml       # Prometheus + Grafana
-├── main.py                  # Orquestador del pipeline
-├── requirements.txt
-├── Makefile
-└── .env.example
-```
-
----
-
-## ⚙️ Variables de entorno
-
-| Variable | Descripción | Default |
-|---|---|---|
-| `MISTRAL_API_KEY` | Clave API de Mistral | *requerida* |
-| `MISTRAL_MODEL` | Modelo Mistral | `mistral-small-latest` |
-| `OLLAMA_EMBEDDING_MODEL` | Modelo embeddings | `nomic-embed-text` |
-| `SCRAPE_MAX_PAGES` | Páginas máx por sitio | `200` |
-| `SCRAPE_DELAY_MIN` | Delay mínimo entre requests (s) | `1.5` |
-| `CHUNK_SIZE` | Tamaño de chunks | `700` |
-| `RETRIEVER_K` | Docs recuperados por query | `4` |
-| `MLFLOW_TRACKING_URI` | URL de MLflow | `http://127.0.0.1:5000` |
-
----
-
-## 🔬 Evaluación
+### Paso 6 — Generar el vectorstore
 
 ```bash
-make evaluate
-# → Genera reports/evaluation/resultados_evaluacion.json
-# → Registra métricas en MLflow
+python -m src.ingest
 ```
 
----
+Este proceso genera los embeddings y construye la base de datos vectorial en `vectorstore/`. Puede tardar entre 5 y 20 minutos.
 
-## 🛡️ Buenas prácticas anti-detección del scraper
+### Paso 7 — Levantar los servicios
 
-- Rotación de User-Agents (pool de 5+ navegadores reales)
-- Delays aleatorios entre peticiones (1.5–4.0s configurable)
-- Cabeceras HTTP completas imitando Chrome real
-- Reintento con backoff exponencial (tenacity)
-- Playwright como fallback para páginas con JS
-- Semáforo de concurrencia (máx 4 conexiones simultáneas)
-- HTTP/2 habilitado
+Abrir tres terminales independientes (con el entorno virtual activado en cada una):
 
----
+Terminal 1 — API:
+```bash
+uvicorn api.main:app --reload --host 127.0.0.1 --port 8082
+```
 
-## 📊 MLflow — Métricas registradas
+Terminal 2 — Interfaz Streamlit:
+```bash
+streamlit run app/streamlit_app.py --server.port 8503
+```
 
-| Run | Métricas |
+Terminal 3 — Monitoreo (opcional):
+```bash
+docker compose up -d
+```
+
+### Acceso a los servicios
+
+| Servicio | URL |
 |---|---|
-| `scraping_recamier` | páginas scrapeadas, chars, tiempo por sitio |
-| `build_vectorstore` | total_chunks, vectorstore_size, embedding_time |
-| `evaluacion_rag_recamier` | score_q1..5, latencia_q1..5, avg_score_global |
-| Cada query (`rag_pipeline_recamier`) | traced automáticamente con `@mlflow.trace` |
+| Interfaz GAIA | http://localhost:8503 |
+| Documentacion API | http://127.0.0.1:8082/docs |
+| MLflow | http://127.0.0.1:5002 |
+| Grafana | http://localhost:3000 (admin / admin) |
+| Prometheus | http://localhost:9090 |
+
+---
+
+## Evaluacion del Sistema RAG
+
+El modulo `src/evaluate.py` ejecuta un conjunto de preguntas de evaluacion sobre el sistema RAG y registra las metricas en MLflow.
+
+```bash
+python -m src.evaluate
+```
+
+Las metricas registradas incluyen score por pregunta (basado en keywords esperadas), latencia de respuesta, y score promedio global. El reporte se guarda en `reports/evaluation/resultados_evaluacion.json`.
+
+---
+
+## Metricas MLflow
+
+| Experimento | Metricas registradas |
+|---|---|
+| scraping_telecom | paginas_scrapeadas por operador, caracteres, tiempo de ejecucion |
+| build_vectorstore | total_chunks, vectorstore_size, embedding_time_s |
+| evaluacion_rag | score por pregunta, latencia por pregunta, avg_score_global |
+| rag_pipeline (por query) | trazado automaticamente con @mlflow.trace |
+
+---
+
+## Memoria Conversacional
+
+El sistema utiliza SQLite para persistir el historial de conversaciones entre sesiones. La base de datos se crea automaticamente en `recamier_memory.db` al iniciar el sistema.
+
+El checkpointer de LangGraph tambien utiliza SQLite para mantener el estado del grafo por sesion, lo que permite continuidad conversacional real entre turnos.
+
+---
+
+## Consideraciones de Despliegue
+
+- El vectorstore debe regenerarse cada vez que se actualice el contenido scrapeado.
+- El archivo `.env` no debe versionarse. Usar `.env.example` como referencia.
+- Las carpetas `vectorstore/`, `data/processed/*.txt` y `recamier_memory.db` no se versionan.
+- Para multiples proyectos corriendo simultaneamente, asignar puertos distintos a cada uno (MLflow, API y Streamlit).
+- El modelo de embeddings debe estar disponible en Ollama antes de ejecutar el ingest.
+
+---
+
+## Investigacion Academica
+
+Este proyecto forma parte de una investigacion sobre experiencia de usuario en sistemas de inteligencia artificial generativa. Los objetivos de investigacion incluyen:
+
+- Evaluar la percepcion de empatia en chatbots basados en GenAI UX vs chatbots tradicionales.
+- Medir usabilidad mediante la escala SUS (System Usability Scale).
+- Analizar satisfaccion del usuario mediante NPS (Net Promoter Score).
+- Comparar experiencia conversacional entre un modelo FAQ transaccional y una arquitectura conversacional centrada en el usuario.
+- Estudiar el impacto de principios de Human-Centered AI en la percepcion de utilidad, confianza y cercania del asistente.
+
+Los prompts del sistema implementan principios de Conversational UX, UX Writing, empatia operacional y adaptive tone response, alineados con el marco teorico de la investigacion.

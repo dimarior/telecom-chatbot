@@ -1,39 +1,64 @@
 {
-  "marcas": {
-    "recamier": {
-      "nombre": "Recamier",
-      "descripcion": "Marca colombiana líder en cuidado capilar con más de 50 años de trayectoria",
-      "sitio_web": "https://recamier.com/",
-      "redes": {
-        "instagram": "@recamier_oficial",
-        "facebook": "RecamierOficial"
+  "operadores": {
+    "claro": {
+      "nombre": "Claro",
+      "descripcion": "Operador de telecomunicaciones líder en Colombia",
+      "sitio_web": "https://www.claro.com.co/",
+      "atencion_cliente": {
+        "linea": "018000 910 900",
+        "chat": "https://www.claro.com.co/personas/autogestion/",
+        "whatsapp": "https://www.claro.com.co/personas/autogestion/whatsapp/"
       },
-      "lineas_principales": [
-        "Tratamientos de Queratina",
-        "Coloración Profesional",
-        "Hidratación y Nutrición",
-        "Anticaída y Crecimiento",
-        "Alisado Progresivo",
-        "Rizos y Ondas"
-      ]
+      "servicios": [
+        "Internet hogar",
+        "Internet móvil",
+        "Telefonía móvil",
+        "Television",
+        "Planes empresariales"
+      ],
+      "autogestion": "https://www.claro.com.co/personas/autogestion/"
     },
-    "salon_in_professional": {
-      "nombre": "Salon In Professional",
-      "descripcion": "Línea profesional para salones de belleza y peluquerías",
-      "sitio_web": "https://saloninprofessional.com/",
-      "enfoque": "Uso profesional en salones de belleza",
-      "lineas_principales": [
-        "Tratamientos Profesionales",
-        "Coloración",
-        "Queratina Profesional",
-        "Cuidado del Cuero Cabelludo"
-      ]
+    "movistar": {
+      "nombre": "Movistar",
+      "descripcion": "Operador de telecomunicaciones de Telefónica en Colombia",
+      "sitio_web": "https://www.movistar.com.co/",
+      "atencion_cliente": {
+        "linea": "*611 desde tu celular Movistar",
+        "chat": "https://www.movistar.com.co/atencion-al-cliente/atencion-en-linea",
+        "autogestion": "https://www.movistar.com.co/procesos-autogestion"
+      },
+      "servicios": [
+        "Internet hogar",
+        "Internet móvil",
+        "Telefonía móvil",
+        "Television Movistar TV",
+        "Planes convergentes"
+      ],
+      "autogestion": "https://www.movistar.com.co/procesos-autogestion"
+    },
+    "tigo": {
+      "nombre": "Tigo",
+      "descripcion": "Operador de telecomunicaciones Millicom en Colombia",
+      "sitio_web": "https://www.tigo.com.co/",
+      "atencion_cliente": {
+        "linea": "*611 desde tu celular Tigo",
+        "chat": "https://ayuda.tigo.com.co/hc/centro-de-ayuda/es",
+        "centro_ayuda": "https://ayuda.tigo.com.co/hc/centro-de-ayuda/es"
+      },
+      "servicios": [
+        "Internet hogar",
+        "Internet móvil",
+        "Telefonía móvil prepago y pospago",
+        "Television TigoUne",
+        "Planes familiares"
+      ],
+      "autogestion": "https://www.tigo.com.co/preguntas-frecuentes-servicios-tigo"
     }
   },
-  "contacto": {
+  "informacion_general": {
     "pais": "Colombia",
-    "sitio_web_principal": "https://recamier.com/",
-    "atencion_cliente": "Disponible en el sitio web oficial recamier.com",
-    "puntos_de_venta": "Farmacias, supermercados, salones de belleza y tienda online"
+    "portabilidad": "Para hacer portabilidad numérica en Colombia llama al 0800 099 0800 o visita el sitio de tu nuevo operador",
+    "regulador": "CRC - Comisión de Regulación de Comunicaciones",
+    "sitio_regulador": "https://www.crcom.gov.co/"
   }
 }

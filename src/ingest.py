@@ -31,7 +31,7 @@ from src.config import (
     VECTORSTORE_DIR,
 )
 
-_LOG = logging.getLogger("recamier.ingest")
+_LOG = logging.getLogger("telecom.ingest")
 
 
 def build_vectorstore() -> None:
