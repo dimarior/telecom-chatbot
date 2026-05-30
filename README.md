@@ -287,19 +287,24 @@ Este proceso genera los embeddings y construye la base de datos vectorial en `ve
 
 ### Paso 7 — Levantar los servicios
 
-Abrir tres terminales independientes (con el entorno virtual activado en cada una):
+Abrir cuatro terminales independientes (con el entorno virtual activado en cada una):
 
-Terminal 1 — API:
+Terminal 1 — MLflow:
+```bash
+mlflow server --host 127.0.0.1 --port 5002
+```
+
+Terminal 2 — API:
 ```bash
 uvicorn api.main:app --reload --host 127.0.0.1 --port 8082
 ```
 
-Terminal 2 — Interfaz Streamlit:
+Terminal 3 — Interfaz Streamlit:
 ```bash
 streamlit run app/streamlit_app.py --server.port 8503
 ```
 
-Terminal 3 — Monitoreo (opcional):
+Terminal 4 — Monitoreo (opcional):
 ```bash
 docker compose up -d
 ```
