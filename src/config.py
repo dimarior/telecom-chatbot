@@ -1,7 +1,7 @@
 """
 src/config.py
 ─────────────
-Configuración centralizada del proyecto Recamier Chatbot.
+Configuración centralizada del proyecto Chatbot RAG.
 Lee variables desde .env con fallback a valores por defecto.
 """
 from __future__ import annotations

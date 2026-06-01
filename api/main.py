@@ -1,8 +1,8 @@
 """
 api/main.py
 ───────────
-FastAPI con LangGraph para el chatbot Recamier.
-Combina el patrón de lifespan de tq_chatbot con el pipeline de genai-rag-eva.
+FastAPI con LangGraph para el chatbot Telecom.
+Combina el patrón de lifespan de tq_chatbot con el pipeline de genai-rag-telecom.
 """
 from __future__ import annotations
 

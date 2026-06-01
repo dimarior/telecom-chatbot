@@ -1,7 +1,7 @@
 """
 src/memory.py
 ─────────────
-Memoria persistente con SQLite para el chatbot Recamier.
+Memoria persistente con SQLite para el chatbot Telecom.
 Guarda historial de conversaciones entre sesiones.
 """
 from __future__ import annotations

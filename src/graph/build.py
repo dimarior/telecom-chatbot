@@ -1,7 +1,7 @@
 """
 src/graph/build.py
 ──────────────────
-Ensambla el StateGraph de Recamier Chatbot y lo compila con checkpointer SQLite.
+Ensambla el StateGraph de Telecom Chatbot y lo compila con checkpointer SQLite.
 Patrón tomado de tq_chatbot.
 """
 from __future__ import annotations
