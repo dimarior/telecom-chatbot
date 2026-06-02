@@ -21,7 +21,7 @@ PROCESSED_DATA_DIR = DATA_DIR / "processed"
 VECTORSTORE_DIR = ROOT_DIR / "vectorstore"
 REPORTS_DIR = ROOT_DIR / "reports"
 EVALUATION_DIR = REPORTS_DIR / "evaluation"
-DB_PATH = ROOT_DIR / "recamier_memory.db"
+DB_PATH = ROOT_DIR / "gaia_memory.db"
 
 # ── LLM ──────────────────────────────────────────────────────────────────────
 MISTRAL_API_KEY: str = os.getenv("MISTRAL_API_KEY", "")
@@ -95,17 +95,17 @@ EXPERIMENT_NAME: str = os.getenv("EXPERIMENT_NAME", "telecom-chatbot-rag")
 
 # ── MLflow ────────────────────────────────────────────────────────────────────
 MLFLOW_TRACKING_URI: str = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
-EXPERIMENT_NAME: str = os.getenv("EXPERIMENT_NAME", "recamier-chatbot-rag")
+EXPERIMENT_NAME: str = os.getenv("EXPERIMENT_NAME", "telecom-chatbot-rag")
 
 # ── API ───────────────────────────────────────────────────────────────────────
 API_HOST: str = os.getenv("API_HOST", "0.0.0.0")
 API_PORT: int = int(os.getenv("API_PORT", "8080"))
-API_TITLE: str = "Recamier Chatbot API"
+API_TITLE: str = "Telecom Chatbot API"
 
 # ── LangSmith ─────────────────────────────────────────────────────────────────
 LANGSMITH_TRACING: bool = os.getenv("LANGSMITH_TRACING", "false").lower() == "true"
 LANGSMITH_API_KEY: str = os.getenv("LANGSMITH_API_KEY", "")
-LANGSMITH_PROJECT: str = os.getenv("LANGSMITH_PROJECT", "recamier-chatbot")
+LANGSMITH_PROJECT: str = os.getenv("LANGSMITH_PROJECT", "telecom-chatbot")
 
 # ── Crear directorios al importar ─────────────────────────────────────────────
 for _d in [RAW_DATA_DIR, PROCESSED_DATA_DIR, VECTORSTORE_DIR, EVALUATION_DIR]:

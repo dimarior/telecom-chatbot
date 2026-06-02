@@ -50,7 +50,7 @@ clean-vectorstore:
 	rm -rf vectorstore/
 
 clean-db:
-	rm -f recamier_memory.db
+	rm -f gaia_memory.db
 
 clean-data:
 	rm -f data/processed/*.txt

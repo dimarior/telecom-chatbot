@@ -6,7 +6,10 @@ GAIA es una plataforma conversacional inteligente desarrollada para el servicio 
 
 El proyecto es parte de una investigación académica sobre experiencia de usuario en sistemas de inteligencia artificial generativa, orientada a evaluar métricas como NPS, SUS, empatía percibida y satisfacción conversacional en comparación con chatbots tradicionales.
 
-Los operadores cubiertos son Claro, Movistar y Tigo.
+La implementación actual cubre los operadores Claro, Movistar y Tigo como caso 
+de estudio, aunque la arquitectura es extensible a cualquier operador de 
+telecomunicaciones mediante la configuración de nuevas fuentes de datos en 
+src/config.py y la regeneración del vectorstore.
 
 ---
 
@@ -319,6 +322,27 @@ docker compose up -d
 | Grafana | http://localhost:3000 (admin / admin) |
 | Prometheus | http://localhost:9090 |
 
+### Nota sobre monitoreo
+
+MLflow registra metricas automaticamente durante el scraping, la construccion
+del vectorstore y la evaluacion RAG. Para generar metricas visibles en MLflow
+ejecutar:
+
+```bash
+python -m src.evaluate
+```
+
+Prometheus y Grafana estan configurados en el docker-compose como capa opcional
+de monitoreo en produccion. Para activarlos:
+
+```bash
+docker compose up -d
+```
+
+Una vez activos, Grafana estara disponible en http://localhost:3000 con
+credenciales admin/admin. En produccion se recomienda cambiar las credenciales
+por defecto.
+
 ---
 
 ## Comandos rápidos con Makefile
@@ -335,7 +359,7 @@ En lugar de escribir el comando completo en la terminal, puedes usar:
 | make streamlit   | streamlit run app/streamlit_app.py --server.port 8503   |
 | make mlflow      | mlflow server --host 127.0.0.1 --port 5002              |
 | make evaluate    | python -m src.evaluate                                  |
-| make clean       | Elimina vectorstore/ y recamier_memory.db               |
+| make clean       | Elimina vectorstore/ y gaia_memory.db               |
 
 Nota: cada comando debe ejecutarse en una terminal independiente
 con el entorno virtual activado (.venv\Scripts\activate en Windows).
@@ -367,7 +391,7 @@ Las metricas registradas incluyen score por pregunta (basado en keywords esperad
 
 ## Memoria Conversacional
 
-El sistema utiliza SQLite para persistir el historial de conversaciones entre sesiones. La base de datos se crea automaticamente en `recamier_memory.db` al iniciar el sistema.
+El sistema utiliza SQLite para persistir el historial de conversaciones entre sesiones. La base de datos se crea automaticamente en `gaia_memory.db`
 
 El checkpointer de LangGraph tambien utiliza SQLite para mantener el estado del grafo por sesion, lo que permite continuidad conversacional real entre turnos.
 
@@ -377,7 +401,7 @@ El checkpointer de LangGraph tambien utiliza SQLite para mantener el estado del 
 
 - El vectorstore debe regenerarse cada vez que se actualice el contenido scrapeado.
 - El archivo `.env` no debe versionarse. Usar `.env.example` como referencia.
-- Las carpetas `vectorstore/`, `data/processed/*.txt` y `recamier_memory.db` no se versionan.
+- Las carpetas `vectorstore/`, `data/processed/*.txt` y `gaia_memory.db` no se versionan.
 - Para multiples proyectos corriendo simultaneamente, asignar puertos distintos a cada uno (MLflow, API y Streamlit).
 - El modelo de embeddings debe estar disponible en Ollama antes de ejecutar el ingest.
 
