@@ -324,6 +324,11 @@ docker compose up -d
 
 ### Nota sobre monitoreo
 
+El sistema cuenta con una capa de observabilidad en dos niveles. MLflow registra 
+las metricas del pipeline de IA — latencia, scores RAG y experimentos. Prometheus 
+y Grafana monitorean la infraestructura — uso de recursos y disponibilidad de los 
+servicios en tiempo real.
+
 MLflow registra metricas automaticamente durante el scraping, la construccion
 del vectorstore y la evaluacion RAG. Para generar metricas visibles en MLflow
 ejecutar:
