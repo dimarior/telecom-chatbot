@@ -391,7 +391,7 @@ Las metricas registradas incluyen score por pregunta (basado en keywords esperad
 
 ## Memoria Conversacional
 
-El sistema utiliza SQLite para persistir el historial de conversaciones entre sesiones. La base de datos se crea automaticamente en `gaia_memory.db`
+El sistema utiliza SQLite para persistir el historial de conversaciones entre sesiones. La base de datos se crea automaticamente en `gaia_memory.db` al iniciar el sistema.
 
 El checkpointer de LangGraph tambien utiliza SQLite para mantener el estado del grafo por sesion, lo que permite continuidad conversacional real entre turnos.
 
