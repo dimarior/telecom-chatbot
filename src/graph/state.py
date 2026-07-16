@@ -21,9 +21,12 @@ class RouteDecision(BaseModel):
     route: Route = Field(
         ...,
         description=(
-            "'direct' para saludos, conversación social, referencias a turnos anteriores. "
-            "'product' para consultas sobre productos, precios, catálogo, puntos de venta, contacto. "
-            "'rag' para información de marca, historia, ingredientes, beneficios, cuidado capilar."
+            "'direct' para saludos, despedidas, agradecimientos, conversación social, "
+            "expresiones emocionales, frustraciones generales o referencias a turnos anteriores. "
+            "'product' para consultas sobre planes, precios, tarifas, portabilidad numérica, "
+            "puntos de atención, activación o cancelación de servicios de telecomunicaciones. "
+            "'rag' para soporte técnico, facturación, recargas, autogestión, cobertura, "
+            "velocidades, preguntas frecuentes y procedimientos de Claro, Movistar o Tigo."
         ),
     )
 

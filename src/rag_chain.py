@@ -156,7 +156,7 @@ def generate_answer(question: str, context: str, history: str = "") -> str:
     })
 
 
-@mlflow.trace(name="rag_pipeline_recamier")
+@mlflow.trace(name="rag_pipeline_gaia")
 def ask(question: str, session_id: str = "default") -> str:
     """Función principal del pipeline RAG."""
     saludos = ["me llamo", "mi nombre es", "hola", "buenos", "gracias", "chao", "bye"]
@@ -178,7 +178,7 @@ def ask(question: str, session_id: str = "default") -> str:
 
 
 if __name__ == "__main__":
-    pregunta = "¿Qué productos de Recamier son buenos para el cabello seco?"
+    pregunta = "¿Cómo reporto una falla técnica de internet con Claro?"
     print(f"\nPregunta: {pregunta}")
     print("\nRespuesta:")
     print(ask(pregunta, session_id="test"))

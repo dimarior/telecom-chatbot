@@ -94,12 +94,12 @@ SCRAPE_TARGETS: list[dict] = [
 EXPERIMENT_NAME: str = os.getenv("EXPERIMENT_NAME", "telecom-chatbot-rag")
 
 # ── MLflow ────────────────────────────────────────────────────────────────────
-MLFLOW_TRACKING_URI: str = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
+MLFLOW_TRACKING_URI: str = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5002")
 EXPERIMENT_NAME: str = os.getenv("EXPERIMENT_NAME", "telecom-chatbot-rag")
 
 # ── API ───────────────────────────────────────────────────────────────────────
 API_HOST: str = os.getenv("API_HOST", "0.0.0.0")
-API_PORT: int = int(os.getenv("API_PORT", "8080"))
+API_PORT: int = int(os.getenv("API_PORT", "8082"))
 API_TITLE: str = "Telecom Chatbot API"
 
 # ── LangSmith ─────────────────────────────────────────────────────────────────

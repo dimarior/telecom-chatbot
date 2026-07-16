@@ -1,14 +1,14 @@
 """
 src/graph/nodes.py
 ──────────────────
-Nodos del grafo Recamier Chatbot.
+Nodos del grafo conversacional GAIA Telecom.
 
-Cinco nodos (patrón tq_chatbot):
-  classify_node  → router LLM: direct / product / rag
-  direct_node    → responde desde historial (social, follow-ups)
-  product_node   → datos estructurados del catálogo JSON
-  retrieve_node  → búsqueda semántica en ChromaDB (contenido web scrapeado)
-  generate_node  → Mistral genera respuesta con contexto + historial
+Cinco nodos:
+  classify_node  → router LLM: direct / product / rag (con detección emocional)
+  direct_node    → respuestas sociales, empáticas y de acompañamiento
+  product_node   → datos estructurados del catálogo de operadores JSON
+  retrieve_node  → búsqueda semántica en ChromaDB (contenido scrapeado de operadores)
+  generate_node  → Mistral genera respuesta con contexto RAG + principios GenAI UX
 """
 from __future__ import annotations
 
@@ -227,16 +227,17 @@ def make_product_node():
     async def product_node(state: ChatState) -> dict:
         if catalog:
             context = (
-                f"Información del catálogo de productos Recamier:\n\n"
+                f"Información del catálogo de operadores de telecomunicaciones en Colombia:\n\n"
                 f"{json.dumps(catalog, ensure_ascii=False, indent=2)}\n\n"
                 f"Pregunta: {state['question']}\n\n"
-                f"Responde de forma directa usando la información anterior."
+                f"Responde de forma directa usando la información anterior sobre Claro, Movistar o Tigo."
             )
         else:
             context = (
-                f"Pregunta sobre productos o información de contacto: {state['question']}\n\n"
-                f"Responde con base en tu conocimiento general sobre Recamier y Salon In Professional. "
-                f"Si no tienes la información exacta, sugiere visitar recamier.com."
+                f"Pregunta sobre planes, tarifas o información de contacto: {state['question']}\n\n"
+                f"Responde con base en tu conocimiento general sobre los operadores colombianos "
+                f"Claro, Movistar y Tigo. Si no tienes la información exacta, orienta al usuario "
+                f"hacia el sitio oficial del operador correspondiente."
             )
         return {"context": context, "sources": []}
 
