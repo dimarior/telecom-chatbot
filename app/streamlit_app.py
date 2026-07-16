@@ -9,10 +9,13 @@ from pathlib import Path
 from PIL import Image
 import streamlit as st
 
-MODELO_ACTIVO = "mistral-small-latest"
-API_URL = "http://127.0.0.1:8082/ask/graph"
-HEALTH_URL = "http://127.0.0.1:8082/health"
-ASSETS = Path("app/assets")
+MODELO_ACTIVO  = "mistral-small-latest"
+API_URL        = "http://127.0.0.1:8082/ask/graph"
+API_AUDIO_URL  = "http://127.0.0.1:8082/ask/audio"
+API_IMAGE_URL  = "http://127.0.0.1:8082/ask/image"
+API_DOC_URL    = "http://127.0.0.1:8082/ask/document"
+HEALTH_URL     = "http://127.0.0.1:8082/health"
+ASSETS         = Path("app/assets")
 
 OPERADORES = {
     "todos": {
@@ -81,7 +84,7 @@ except Exception:
         layout="wide",
     )
 
-# ── SESSION STATE INIT ────────────────────────────────────────────────────────
+# ── SESSION STATE ─────────────────────────────────────────────────────────────
 if "session_id" not in st.session_state:
     st.session_state["session_id"] = str(uuid.uuid4())[:8]
 if "sesiones" not in st.session_state:
@@ -94,11 +97,17 @@ if "limpiar_textarea" not in st.session_state:
     st.session_state["limpiar_textarea"] = False
 if "operador_actual" not in st.session_state:
     st.session_state["operador_actual"] = "todos"
+if "archivo_adjunto" not in st.session_state:
+    st.session_state["archivo_adjunto"] = None
+if "tipo_adjunto" not in st.session_state:
+    st.session_state["tipo_adjunto"] = None
+if "mostrar_uploader" not in st.session_state:
+    st.session_state["mostrar_uploader"] = None
 
 operador = st.session_state["operador_actual"]
 color_op = OPERADORES[operador]["color"]
 
-# ── ESTILOS GLOBALES ──────────────────────────────────────────────────────────
+# ── ESTILOS ───────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&display=swap');
@@ -126,7 +135,6 @@ st.markdown(f"""
         margin: 1.2rem 0 0.5rem;
     }}
 
-    /* ── Botones de conversación en sidebar ── */
     [data-testid="stSidebar"] .stButton > button {{
         background: rgba(255,255,255,0.03) !important;
         color: #B7C2D0 !important;
@@ -150,23 +158,10 @@ st.markdown(f"""
         border-color: rgba(79,227,224,0.2) !important;
     }}
 
-    /* ── Logo de operador centrado sobre el botón ── */
     .op-logo-box {{
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 48px;
-        margin-bottom: 0px;
+        display: flex; justify-content: center; align-items: center;
+        height: 48px; margin-bottom: 0px;
     }}
-    .op-logo-box img {{
-        height: 28px;
-        object-fit: contain;
-        max-width: 80px;
-        pointer-events: none;
-        filter: drop-shadow(0 0 6px rgba(255,255,255,0.15));
-    }}
-
-    /* Botones de operador con estado activo via clase CSS */
     .op-btn-activo .stButton > button {{
         border-color: var(--op-color, rgba(79,227,224,0.6)) !important;
         background: var(--op-bg, rgba(79,227,224,0.08)) !important;
@@ -175,7 +170,6 @@ st.markdown(f"""
         font-weight: 700 !important;
     }}
 
-    /* ── Botón principal ── */
     .stButton > button {{
         background: rgba(255,255,255,0.04) !important;
         color: #B7C2D0 !important;
@@ -261,6 +255,10 @@ st.markdown(f"""
         margin: 0.5rem 0; font-size: 0.9rem; color: #F8FBFF !important;
         text-align: right;
     }}
+    .chat-user-badge {{
+        font-size: 0.65rem; color: rgba(79,227,224,0.6);
+        margin-bottom: 0.3rem; text-align: right;
+    }}
     .chat-bot {{
         background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
         border-left: 3px solid {color_op}; border-radius: 2px 12px 12px 12px;
@@ -281,7 +279,7 @@ st.markdown(f"""
     .respuesta-text {{ color: #F8FBFF; line-height: 1.9; font-size: 0.92rem; }}
 
     .metrics-row {{
-        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 1rem;
+        display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 1rem;
     }}
     .metric-card {{
         background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
@@ -298,6 +296,30 @@ st.markdown(f"""
         background: linear-gradient(to right, transparent, rgba(255,255,255,0.08), transparent);
         margin: 1.5rem 0;
     }}
+
+    .adjunto-preview {{
+        display: flex; align-items: center; gap: 10px;
+        background: rgba(79,227,224,0.06);
+        border: 1px solid rgba(79,227,224,0.2);
+        border-radius: 10px; padding: 0.6rem 1rem;
+        margin-bottom: 0.5rem; font-size: 0.82rem; color: #4FE3E0;
+    }}
+    .adjunto-preview span {{ flex: 1; }}
+
+    .modal-btn-icon {{
+        text-align: center;
+        margin-bottom: 2px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }}
+    .modal-btn-icon img {{
+        height: 22px;
+        object-fit: contain;
+        filter: drop-shadow(0 0 4px rgba(79,227,224,0.2));
+    }}
+
     .footer {{
         text-align: center; background: rgba(2,6,11,0.8);
         border: 1px solid rgba(255,255,255,0.06); color: rgba(183,194,208,0.5);
@@ -336,6 +358,9 @@ with st.sidebar:
         st.session_state["pregunta_actual"] = ""
         st.session_state["textarea_principal"] = ""
         st.session_state["operador_actual"] = "todos"
+        st.session_state["archivo_adjunto"] = None
+        st.session_state["tipo_adjunto"] = None
+        st.session_state["mostrar_uploader"] = None
         st.rerun()
 
     for sid, datos in list(st.session_state["sesiones"].items()):
@@ -349,18 +374,14 @@ with st.sidebar:
     st.markdown("---")
     st.markdown('<div class="sidebar-section">Operador</div>', unsafe_allow_html=True)
 
-    # ── Selector de operadores ────────────────────────────────────────────────
-    # Logo: imagen decorativa pura, sin bordes ni interacción.
-    # Botón: solo el texto del nombre, con estilo activo/inactivo.
     for key, op in OPERADORES.items():
-        activo      = st.session_state["operador_actual"] == key
+        activo       = st.session_state["operador_actual"] == key
         border_color = f"{op['color']}90" if activo else "rgba(255,255,255,0.10)"
         bg_color     = f"{op['color']}12" if activo else "rgba(255,255,255,0.03)"
         glow_shadow  = f"0 0 16px {op['color']}30" if activo else "none"
         font_weight  = "700" if activo else "500"
         text_color   = op['color'] if activo else "#B7C2D0"
 
-        # Logo/emoji — puro HTML decorativo, sin bordes ni fondo
         logo_inner = ""
         if op.get("logo"):
             b64 = img_to_base64(op["logo"])
@@ -379,7 +400,6 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
 
-        # CSS para este botón específico (activo/inactivo)
         st.markdown(f"""
         <style>
             div[data-testid="stSidebar"]
@@ -473,12 +493,23 @@ if historial_actual:
     st.markdown('<div class="section-title">Conversación</div>', unsafe_allow_html=True)
     for msg in historial_actual:
         if msg["role"] == "user":
-            st.markdown(f'<div class="chat-user">{msg["content"]}</div>',
-                        unsafe_allow_html=True)
+            modalidad = msg.get("modalidad", "texto")
+            badge = ""
+            if modalidad == "audio":
+                badge = f'<div class="chat-user-badge">🎤 Audio: {msg.get("archivo","")}</div>'
+            elif modalidad == "imagen":
+                badge = f'<div class="chat-user-badge">🖼 Imagen: {msg.get("archivo","")}</div>'
+            elif modalidad == "documento":
+                badge = f'<div class="chat-user-badge">📎 PDF: {msg.get("archivo","")}</div>'
+            st.markdown(
+                f'<div class="chat-user">{badge}{msg["content"]}</div>',
+                unsafe_allow_html=True)
         else:
+            modal_icons = {"texto": "✦", "audio": "🎤", "imagen": "🖼", "documento": "📎"}
+            modal_icon  = modal_icons.get(msg.get("modalidad", "texto"), "✦")
             st.markdown(
                 f'<div class="chat-bot">{msg["content"]}'
-                f'<div class="chat-meta">⏱ {msg.get("latencia","")}s · {MODELO_ACTIVO} · GAIA</div>'
+                f'<div class="chat-meta">{modal_icon} ⏱ {msg.get("latencia","")}s · {MODELO_ACTIVO} · GAIA</div>'
                 f'</div>', unsafe_allow_html=True)
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 
@@ -529,12 +560,13 @@ for i, ejemplo in enumerate(preguntas):
 st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 st.markdown('<div class="section-title">Tu consulta</div>', unsafe_allow_html=True)
 
-# Si venimos de un envío exitoso, limpiar el textarea
+# Limpiar textarea
 if st.session_state.get("limpiar_textarea", False):
     st.session_state["pregunta_actual"] = ""
     st.session_state["textarea_principal"] = ""
     st.session_state["limpiar_textarea"] = False
 
+# ── Textarea ──────────────────────────────────────────────────────────────────
 pregunta = st.text_area(
     label="Pregunta",
     placeholder=op_info["placeholder"],
@@ -543,55 +575,227 @@ pregunta = st.text_area(
     key="textarea_principal",
 )
 
+# ── Botones multimodal: ícono arriba + botón abajo ────────────────────────────
+icon_img_b64 = img_to_base64(str(ASSETS / "icon-imagen.png"))
+icon_pdf_b64 = img_to_base64(str(ASSETS / "icon-pdf.png"))
+icon_aud_b64 = img_to_base64(str(ASSETS / "icon-audio.png"))
+
+col_b1, col_b2, col_b3, col_spacer = st.columns([1, 1, 1, 9])
+
+with col_b1:
+    if icon_img_b64:
+        st.markdown(
+            f'<div class="modal-btn-icon"><img src="data:image/png;base64,{icon_img_b64}"/></div>',
+            unsafe_allow_html=True
+        )
+    if st.button("Imagen", key="btn_imagen", use_container_width=True, help="Adjuntar imagen"):
+        st.session_state["mostrar_uploader"] = (
+            None if st.session_state["mostrar_uploader"] == "imagen" else "imagen"
+        )
+        st.session_state["archivo_adjunto"] = None
+        st.session_state["tipo_adjunto"] = None
+
+with col_b2:
+    if icon_pdf_b64:
+        st.markdown(
+            f'<div class="modal-btn-icon"><img src="data:image/png;base64,{icon_pdf_b64}"/></div>',
+            unsafe_allow_html=True
+        )
+    if st.button("PDF", key="btn_doc", use_container_width=True, help="Adjuntar documento PDF"):
+        st.session_state["mostrar_uploader"] = (
+            None if st.session_state["mostrar_uploader"] == "documento" else "documento"
+        )
+        st.session_state["archivo_adjunto"] = None
+        st.session_state["tipo_adjunto"] = None
+
+with col_b3:
+    if icon_aud_b64:
+        st.markdown(
+            f'<div class="modal-btn-icon"><img src="data:image/png;base64,{icon_aud_b64}"/></div>',
+            unsafe_allow_html=True
+        )
+    if st.button("Voz", key="btn_audio", use_container_width=True, help="Grabar mensaje de voz"):
+        st.session_state["mostrar_uploader"] = (
+            None if st.session_state["mostrar_uploader"] == "audio" else "audio"
+        )
+        st.session_state["archivo_adjunto"] = None
+        st.session_state["tipo_adjunto"] = None
+
+# Uploaders dinámicos
+if st.session_state["mostrar_uploader"] == "imagen":
+    archivo = st.file_uploader(
+        "Selecciona una imagen",
+        type=["jpg", "jpeg", "png", "webp", "bmp"],
+        key="uploader_imagen",
+        label_visibility="collapsed",
+    )
+    if archivo:
+        st.session_state["archivo_adjunto"] = archivo
+        st.session_state["tipo_adjunto"] = "imagen"
+
+elif st.session_state["mostrar_uploader"] == "documento":
+    archivo = st.file_uploader(
+        "Selecciona un PDF",
+        type=["pdf"],
+        key="uploader_doc",
+        label_visibility="collapsed",
+    )
+    if archivo:
+        st.session_state["archivo_adjunto"] = archivo
+        st.session_state["tipo_adjunto"] = "documento"
+
+elif st.session_state["mostrar_uploader"] == "audio":
+    audio_grabado = st.audio_input(
+        "Graba tu mensaje de voz",
+        key="grabador_audio",
+    )
+    if audio_grabado:
+        st.session_state["archivo_adjunto"] = audio_grabado
+        st.session_state["tipo_adjunto"] = "audio"
+
+# Preview del archivo adjunto
+if st.session_state["archivo_adjunto"]:
+    archivo_adj_prev = st.session_state["archivo_adjunto"]
+    tipo_prev = st.session_state["tipo_adjunto"]
+    icono_badge = {"imagen": "🖼", "documento": "📎", "audio": "🎤"}.get(tipo_prev, "📎")
+
+    col_prev, col_rm = st.columns([10, 1])
+    with col_prev:
+        st.markdown(f"""
+        <div class="adjunto-preview">
+            <span>{icono_badge}</span>
+            <span>{archivo_adj_prev.name}</span>
+            <span style="color:rgba(79,227,224,0.5);font-size:0.7rem;">
+                {round(len(archivo_adj_prev.getvalue()) / 1024, 1)} KB
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+        if tipo_prev == "imagen":
+            try:
+                img_preview = Image.open(archivo_adj_prev)
+                st.image(img_preview, width=200)
+                archivo_adj_prev.seek(0)
+            except Exception:
+                pass
+    with col_rm:
+        if st.button("✕", key="rm_adj", help="Quitar archivo"):
+            st.session_state["archivo_adjunto"] = None
+            st.session_state["tipo_adjunto"] = None
+            st.session_state["mostrar_uploader"] = None
+            st.rerun()
+
+# ── Botón principal ───────────────────────────────────────────────────────────
 consultar = st.button("Consultar con GAIA ✦", type="primary", use_container_width=True)
 
-if consultar and pregunta.strip():
+# ── Lógica de envío ───────────────────────────────────────────────────────────
+archivo_adj = st.session_state.get("archivo_adjunto")
+tipo_adj    = st.session_state.get("tipo_adjunto")
+hay_texto   = bool(pregunta and pregunta.strip())
+hay_archivo = archivo_adj is not None
+
+if consultar and not hay_texto and not hay_archivo:
+    st.warning("Escribe una pregunta o adjunta un archivo antes de consultar.")
+
+elif consultar and (hay_texto or hay_archivo):
     operador_sel = st.session_state["operador_actual"]
-    pregunta_enriquecida = pregunta.strip()
-    if operador_sel != "todos":
-        pregunta_enriquecida = f"[{OPERADORES[operador_sel]['nombre']}] {pregunta.strip()}"
+    session_id   = st.session_state["session_id"]
 
     with st.spinner("GAIA está procesando tu consulta..."):
         try:
-            response = requests.post(
-                API_URL,
-                json={
-                    "pregunta": pregunta_enriquecida,
-                    "session_id": st.session_state["session_id"],
-                },
-                timeout=120,
-            )
-            result = response.json()
-            if "error" in result:
-                st.error(f"{result['error']}")
+            result = None
+            modalidad_enviada = "texto"
+            contenido_usuario = ""
+
+            if hay_archivo and tipo_adj == "audio":
+                archivo_adj.seek(0)
+                files  = {"audio": (archivo_adj.name, archivo_adj.read(), "audio/mpeg")}
+                data   = {"session_id": session_id}
+                resp   = requests.post(API_AUDIO_URL, files=files, data=data, timeout=180)
+                result = resp.json()
+                modalidad_enviada = "audio"
+                contenido_usuario = f"[Audio: {archivo_adj.name}]"
+                if hay_texto:
+                    contenido_usuario += f" {pregunta.strip()}"
+
+            elif hay_archivo and tipo_adj == "imagen":
+                archivo_adj.seek(0)
+                files  = {"imagen": (archivo_adj.name, archivo_adj.read(), "image/jpeg")}
+                data   = {"session_id": session_id, "pregunta_adicional": pregunta.strip()}
+                resp   = requests.post(API_IMAGE_URL, files=files, data=data, timeout=180)
+                result = resp.json()
+                modalidad_enviada = "imagen"
+                contenido_usuario = f"[Imagen: {archivo_adj.name}]"
+                if hay_texto:
+                    contenido_usuario += f" {pregunta.strip()}"
+
+            elif hay_archivo and tipo_adj == "documento":
+                archivo_adj.seek(0)
+                files  = {"documento": (archivo_adj.name, archivo_adj.read(), "application/pdf")}
+                data   = {"session_id": session_id, "pregunta_adicional": pregunta.strip()}
+                resp   = requests.post(API_DOC_URL, files=files, data=data, timeout=180)
+                result = resp.json()
+                modalidad_enviada = "documento"
+                contenido_usuario = f"[PDF: {archivo_adj.name}]"
+                if hay_texto:
+                    contenido_usuario += f" {pregunta.strip()}"
+
             else:
+                pregunta_enriquecida = pregunta.strip()
+                if operador_sel != "todos":
+                    pregunta_enriquecida = f"[{OPERADORES[operador_sel]['nombre']}] {pregunta.strip()}"
+                resp   = requests.post(
+                    API_URL,
+                    json={"pregunta": pregunta_enriquecida, "session_id": session_id},
+                    timeout=120,
+                )
+                result = resp.json()
+                modalidad_enviada = "texto"
+                contenido_usuario = pregunta.strip()
+
+            if result and "respuesta" in result:
                 sid = st.session_state["sesion_actual"]
                 if sid not in st.session_state["sesiones"]:
-                    st.session_state["sesiones"][sid] = {
-                        "nombre": "Nueva conversación", "historial": []
-                    }
+                    st.session_state["sesiones"][sid] = {"nombre": "Nueva conversación", "historial": []}
+
+                nombre_archivo = archivo_adj.name if archivo_adj else ""
                 st.session_state["sesiones"][sid]["historial"].append({
-                    "role": "user", "content": pregunta.strip()
+                    "role": "user",
+                    "content": contenido_usuario,
+                    "modalidad": modalidad_enviada,
+                    "archivo": nombre_archivo,
                 })
                 st.session_state["sesiones"][sid]["historial"].append({
                     "role": "assistant",
                     "content": result["respuesta"],
                     "latencia": result["latencia_segundos"],
+                    "modalidad": modalidad_enviada,
                 })
                 if len(st.session_state["sesiones"][sid]["historial"]) == 2:
-                    st.session_state["sesiones"][sid]["nombre"] = pregunta.strip()[:30]
+                    nombre_conv = contenido_usuario[:30] if contenido_usuario else nombre_archivo[:30]
+                    st.session_state["sesiones"][sid]["nombre"] = nombre_conv
 
                 st.session_state["limpiar_textarea"] = True
+                st.session_state["archivo_adjunto"] = None
+                st.session_state["tipo_adjunto"] = None
+                st.session_state["mostrar_uploader"] = None
+
+                modal_icons = {"texto": "✦", "audio": "🎤", "imagen": "🖼", "documento": "📎"}
+                modal_icon  = modal_icons.get(modalidad_enviada, "✦")
+                modal_label = modalidad_enviada.upper()
 
                 st.markdown(f"""
                 <div class="respuesta-box">
-                    <div class="respuesta-label">✦ GAIA · {op_info['nombre']}</div>
+                    <div class="respuesta-label">{modal_icon} GAIA · {op_info['nombre']} · {modal_label}</div>
                     <div class="respuesta-text">{result['respuesta']}</div>
                 </div>
                 <div class="metrics-row">
                     <div class="metric-card">
                         <span class="metric-val">{result['latencia_segundos']}s</span>
                         <span class="metric-lbl">Latencia</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-val">{modal_icon}</span>
+                        <span class="metric-lbl">{modal_label}</span>
                     </div>
                     <div class="metric-card">
                         <span class="metric-val">3</span>
@@ -604,14 +808,16 @@ if consultar and pregunta.strip():
                 </div>
                 """, unsafe_allow_html=True)
                 st.rerun()
+            else:
+                error_msg = result.get("detail", result.get("error", "Error desconocido")) if result else "Sin respuesta"
+                st.error(f"Error: {error_msg}")
 
         except requests.exceptions.ConnectionError:
             st.error("❌ No se pudo conectar con la API en :8082")
         except requests.exceptions.Timeout:
             st.warning("⏳ La consulta tardó demasiado. Intenta de nuevo.")
-
-elif consultar and not pregunta.strip():
-    st.warning("Escribe una pregunta antes de consultar.")
+        except Exception as e:
+            st.error(f"Error inesperado: {str(e)}")
 
 # Footer brands
 brands_path = str(ASSETS / "gaia-footer-brands.png")
@@ -621,8 +827,7 @@ try:
     st.markdown(f"""
     <div style="border-radius:16px;overflow:hidden;margin-top:2rem;
         box-shadow:0 4px 30px rgba(0,0,0,0.3);">
-        <img src="data:image/png;base64,{b64_brands}"
-             style="width:100%;display:block;"/>
+        <img src="data:image/png;base64,{b64_brands}" style="width:100%;display:block;"/>
     </div>
     """, unsafe_allow_html=True)
 except FileNotFoundError:
