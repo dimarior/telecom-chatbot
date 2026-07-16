@@ -1,15 +1,12 @@
 # GAIA — Asistente Conversacional de Telecomunicaciones
 
-## Descripción General
+## Descripcion General
 
-GAIA es una plataforma conversacional inteligente desarrollada para el servicio al cliente de operadores de telecomunicaciones en Colombia. El sistema integra recuperación aumentada de generación (RAG), arquitectura de grafos conversacionales con LangGraph, y principios de Human-Centered AI (HCAI) y GenAI UX para ofrecer una experiencia empática, contextual y centrada en el usuario.
+GAIA es una plataforma conversacional inteligente desarrollada para el servicio al cliente de operadores de telecomunicaciones en Colombia. El sistema integra recuperacion aumentada de generacion (RAG), arquitectura de grafos conversacionales con LangGraph, modulos de procesamiento multimodal y principios de Human-Centered AI (HCAI) y GenAI UX para ofrecer una experiencia empatica, contextual y centrada en el usuario.
 
-El proyecto es parte de una investigación académica sobre experiencia de usuario en sistemas de inteligencia artificial generativa, orientada a evaluar métricas como NPS, SUS, empatía percibida y satisfacción conversacional en comparación con chatbots tradicionales.
+El proyecto es parte de una investigacion academica sobre experiencia de usuario en sistemas de inteligencia artificial generativa, orientada a evaluar metricas como NPS, SUS, empatia percibida y satisfaccion conversacional en comparacion con chatbots tradicionales.
 
-La implementación actual cubre los operadores Claro, Movistar y Tigo como caso 
-de estudio, aunque la arquitectura es extensible a cualquier operador de 
-telecomunicaciones mediante la configuración de nuevas fuentes de datos en 
-src/config.py y la regeneración del vectorstore.
+La implementacion actual cubre los operadores Claro, Movistar y Tigo como caso de estudio, aunque la arquitectura es extensible a cualquier operador de telecomunicaciones mediante la configuracion de nuevas fuentes de datos en src/config.py y la regeneracion del vectorstore.
 
 ---
 
@@ -21,19 +18,24 @@ src/config.py y la regeneración del vectorstore.
 ### Selector de operadores
 ![Operadores GAIA](app/assets/screenshot-sidebar.png)
 
-### Conversación de ejemplo
+### Conversacion de ejemplo
 ![Conversacion GAIA](app/assets/screenshot-conversacion.png)
 
 ---
 
 ## Arquitectura del Sistema
 
-El sistema se compone de tres capas principales: la interfaz de usuario (Streamlit), la capa de API (FastAPI), y el motor de inteligencia conversacional (LangGraph + RAG).
+El sistema se compone de cuatro capas principales: la interfaz de usuario (Streamlit), la capa de API (FastAPI), el motor de inteligencia conversacional (LangGraph + RAG) y el modulo multimodal (Whisper + EasyOCR + PyMuPDF).
 
 ### Flujo conversacional
 
 ```
-Usuario
+Usuario (texto / voz / imagen / PDF)
+   |
+Modulo Multimodal (src/multimodal/)
+   |  audio  → Whisper ASR → texto transcrito
+   |  imagen → EasyOCR     → texto extraido
+   |  PDF    → PyMuPDF     → texto extraido
    |
 Streamlit (interfaz web)
    |
@@ -84,8 +86,12 @@ ChromaDB (vectorstore/)
 | Modelo de lenguaje | Mistral AI (mistral-small-latest) |
 | Embeddings | Ollama (nomic-embed-text) |
 | Base de datos vectorial | ChromaDB |
+| Procesamiento de voz | Whisper (openai-whisper, CPU) |
+| Procesamiento de imagenes | EasyOCR |
+| Procesamiento de documentos | PyMuPDF (fitz) |
 | Web scraping | httpx + Playwright + BeautifulSoup4 |
-| Tracking y metricas | MLflow |
+| Tracking y metricas RAG | MLflow |
+| Evaluacion RAG avanzada | RAGAS |
 | Memoria conversacional | SQLite |
 | Monitoreo | Prometheus + Grafana |
 | Gestion de dependencias | uv + pip |
@@ -99,11 +105,11 @@ ChromaDB (vectorstore/)
 telecom-chatbot/
 |
 +-- app/
-|   +-- assets/                  Logos, imagenes, favicon, banner
-|   +-- streamlit_app.py         Interfaz GAIA con selector de operadores
+|   +-- assets/                  Logos, imagenes, favicon, banner, iconos multimodal
+|   +-- streamlit_app.py         Interfaz GAIA con selector de operadores y multimodalidad
 |
 +-- api/
-|   +-- main.py                  FastAPI con endpoints /ask y /ask/graph
+|   +-- main.py                  FastAPI: /ask, /ask/graph, /ask/audio, /ask/image, /ask/document
 |   +-- __init__.py
 |
 +-- src/
@@ -112,14 +118,21 @@ telecom-chatbot/
 |   +-- ingest.py                Chunking, embeddings y construccion de ChromaDB
 |   +-- rag_chain.py             Pipeline RAG simple con MLflow tracing
 |   +-- memory.py                Memoria persistente en SQLite
-|   +-- evaluate.py              Evaluacion del sistema RAG con metricas
-|   +-- product_catalog.json     Datos estructurados de operadores
+|   +-- evaluate.py              Evaluacion del sistema RAG con metricas por operador
+|   +-- evaluate_ragas.py        Evaluacion avanzada con RAGAS y eval gate
+|   +-- product_catalog.json     Datos estructurados de operadores Claro/Movistar/Tigo
 |   +-- __init__.py
 |   |
 |   +-- graph/
-|       +-- state.py             Definicion del estado LangGraph (ChatState)
-|       +-- nodes.py             Nodos del grafo: classify, direct, product, retrieve, generate
-|       +-- build.py             Compilacion del grafo con checkpointer SQLite
+|   |   +-- state.py             Definicion del estado LangGraph (ChatState)
+|   |   +-- nodes.py             Nodos del grafo con prompts GenAI UX y HCAI
+|   |   +-- build.py             Compilacion del grafo con checkpointer SQLite
+|   |   +-- __init__.py
+|   |
+|   +-- multimodal/
+|       +-- audio.py             Transcripcion de voz con Whisper (CPU)
+|       +-- image.py             Extraccion de texto de imagenes con EasyOCR
+|       +-- document.py          Extraccion de texto de PDFs con PyMuPDF
 |       +-- __init__.py
 |
 +-- data/
@@ -128,7 +141,7 @@ telecom-chatbot/
 |
 +-- vectorstore/                 ChromaDB persistido (generado, no versionado)
 +-- reports/
-|   +-- evaluation/              Resultados JSON de evaluacion RAG
+|   +-- evaluation/              Resultados JSON de evaluacion RAG y RAGAS
 |
 +-- docker/
 |   +-- prometheus.yml           Configuracion de Prometheus
@@ -145,6 +158,54 @@ telecom-chatbot/
 +-- .gitignore
 +-- README.md
 ```
+
+---
+
+## Modulo Multimodal
+
+GAIA procesa tres tipos de entrada ademas del texto, convirtiendo cada modalidad a texto antes de entrar al grafo conversacional LangGraph.
+
+### Audio — Whisper
+
+El modulo `src/multimodal/audio.py` transcribe mensajes de voz usando Whisper de OpenAI en modo CPU. La interfaz permite grabar directamente desde el navegador usando `st.audio_input` de Streamlit.
+
+| Parametro | Valor | Descripcion |
+|---|---|---|
+| Modelo | base | Balance entre velocidad y precision en CPU |
+| Idioma | es | Espanol colombiano por defecto |
+| Formatos | wav, mp3, ogg, m4a, flac | Formatos de audio soportados |
+| Variable de entorno | WHISPER_MODEL | Configurable en .env |
+
+Nota: en Windows se requiere ffmpeg instalado para el procesamiento de audio. En despliegues Linux (Streamlit Cloud, Railway) ffmpeg viene preinstalado.
+
+### Imagen — EasyOCR
+
+El modulo `src/multimodal/image.py` extrae texto de imagenes usando EasyOCR con soporte para espanol e ingles. Casos de uso: fotos de routers, capturas de pantalla de errores, imagenes de facturas.
+
+| Parametro | Valor |
+|---|---|
+| Idiomas | es, en |
+| GPU | False (CPU) |
+| Confianza minima | 0.3 |
+| Formatos | jpg, jpeg, png, bmp, webp |
+
+### Documento — PyMuPDF
+
+El modulo `src/multimodal/document.py` extrae texto de archivos PDF usando PyMuPDF (fitz). Casos de uso: facturas en PDF, contratos, comprobantes de pago.
+
+| Parametro | Valor |
+|---|---|
+| Biblioteca | PyMuPDF (fitz) |
+| Formatos | PDF |
+| Limite de contexto | 3000 caracteres |
+
+### Endpoints multimodal
+
+| Endpoint | Metodo | Descripcion |
+|---|---|---|
+| /ask/audio | POST | Recibe audio, transcribe con Whisper y procesa con LangGraph |
+| /ask/image | POST | Recibe imagen, extrae texto con EasyOCR y procesa con LangGraph |
+| /ask/document | POST | Recibe PDF, extrae texto con PyMuPDF y procesa con LangGraph |
 
 ---
 
@@ -167,19 +228,20 @@ Los prompts del sistema implementan los siguientes principios:
 - Empatia conversacional: validacion emocional ante frustracion o urgencia antes de responder tecnicamente.
 - UX Writing: lenguaje claro, simple, sin tecnicismos, con frases cortas y conversacionales.
 - Adaptacion de tono: soporte tecnico (empatico y guiado), facturacion (claro y tranquilizador), consulta comercial (orientador), frustracion (contencion primero, solucion despues).
-- Fallback humanizado: cuando la informacion no esta disponible, se orienta al usuario con calidez y se mantiene el acompanamiento conversacional.
+- Fallback humanizado: cuando la informacion no esta disponible, se orienta al usuario con calidez.
 - Continuidad conversacional: el historial se aprovecha para mantener coherencia sin tratar cada mensaje como una consulta nueva.
-- Grounding estricto: no se inventa informacion. Las respuestas se basan exclusivamente en el contexto recuperado de ChromaDB.
+- Grounding estricto: las respuestas se basan exclusivamente en el contexto recuperado de ChromaDB.
 
 ### Endpoints de la API
 
 | Endpoint | Descripcion |
 |---|---|
-| GET /health | Estado del sistema |
+| GET /health | Estado del sistema e informacion de modulos multimodal |
 | POST /ask | Pipeline RAG simple (sin LangGraph) |
 | POST /ask/graph | Pipeline con LangGraph (router + memoria checkpointer) |
-
-La interfaz Streamlit apunta al endpoint `/ask/graph` para aprovechar el router inteligente y la memoria de sesion.
+| POST /ask/audio | Pipeline con entrada de voz (Whisper) |
+| POST /ask/image | Pipeline con entrada de imagen (EasyOCR) |
+| POST /ask/document | Pipeline con entrada de PDF (PyMuPDF) |
 
 ---
 
@@ -188,20 +250,18 @@ La interfaz Streamlit apunta al endpoint `/ask/graph` para aprovechar el router 
 El modulo `src/scraper.py` implementa un crawler BFS (Breadth-First Search) con las siguientes caracteristicas anti-deteccion:
 
 - Rotacion de User-Agents con pool de navegadores reales (Chrome, Firefox, Edge, Safari).
-- Cabeceras HTTP completas que imitan un navegador Chrome real, incluyendo Sec-CH-UA, Sec-Fetch-Dest y Accept-Language en espanol colombiano.
-- Delays aleatorios configurables entre peticiones (SCRAPE_DELAY_MIN y SCRAPE_DELAY_MAX).
-- Reintento con backoff exponencial usando la libreria tenacity (hasta 3 intentos).
+- Cabeceras HTTP completas que imitan un navegador Chrome real.
+- Delays aleatorios configurables entre peticiones.
+- Reintento con backoff exponencial usando tenacity (hasta 3 intentos).
 - Playwright como fallback para paginas que requieren JavaScript.
-- Semaforo de concurrencia configurable (SCRAPE_CONCURRENCY).
-- Filtros de URLs: extensiones estaticas, patrones de WordPress, carrito de compras, feeds, administracion.
-- Extraccion de texto limpio: elimina scripts, estilos, navegacion, footer, cookies, popups y ads.
-- Deduplicacion de lineas consecutivas en el texto extraido.
+- Semaforo de concurrencia configurable.
+- Extraccion de texto limpio sin scripts, estilos, navegacion ni publicidad.
 
 ### Sitios scrapeados
 
 | Operador | URLs semilla |
 |---|---|
-| Claro | claro.com.co/personas/faqs/, claro.com.co/personas/autogestion/, claro.com.co/personas/servicios/, claro.com.co/personas/legal-y-regulatorio/ |
+| Claro | claro.com.co/personas/faqs/, claro.com.co/personas/autogestion/, claro.com.co/personas/servicios/ |
 | Movistar | movistar.com.co/atencion-al-cliente/, descubre.movistar.co/atencion-cliente/, movistar.com.co/procesos-autogestion |
 | Tigo | tigo.com.co/preguntas-frecuentes-servicios-tigo, ayuda.tigo.com.co/hc/centro-de-ayuda/es |
 
@@ -225,10 +285,11 @@ Copia el archivo `.env.example` a `.env` y configura las variables necesarias.
 | SCRAPE_MAX_PAGES | Paginas maximas por sitio | 500 |
 | SCRAPE_DELAY_MIN | Delay minimo entre peticiones (segundos) | 1.2 |
 | SCRAPE_DELAY_MAX | Delay maximo entre peticiones (segundos) | 3.5 |
-| MLFLOW_TRACKING_URI | URL del servidor MLflow | http://127.0.0.1:5000 |
+| MLFLOW_TRACKING_URI | URL del servidor MLflow | http://127.0.0.1:5002 |
 | EXPERIMENT_NAME | Nombre del experimento en MLflow | telecom-chatbot-rag |
 | API_HOST | Host de la API | 0.0.0.0 |
 | API_PORT | Puerto de la API | 8082 |
+| WHISPER_MODEL | Modelo Whisper para transcripcion de voz | base |
 
 ---
 
@@ -240,6 +301,7 @@ Copia el archivo `.env.example` a `.env` y configura las variables necesarias.
 - uv (gestor de dependencias)
 - Ollama instalado y corriendo con el modelo nomic-embed-text
 - Cuenta en Mistral AI con clave API activa
+- ffmpeg instalado en Windows (requerido por Whisper)
 - Docker (opcional, para Prometheus y Grafana)
 
 ### Paso 1 — Configurar entorno
@@ -252,45 +314,54 @@ cp .env.example .env
 ### Paso 2 — Crear entorno virtual e instalar dependencias
 
 ```bash
-uv venv .venv
+uv venv .venv --python 3.11
 .venv\Scripts\activate       # Windows
 source .venv/bin/activate    # Linux / macOS
 
-uv pip install -r requirements.txt
+.venv/Scripts/python.exe -m pip install -r requirements.txt
 playwright install chromium
 ```
 
-### Paso 3 — Descargar modelo de embeddings
+### Paso 3 — Instalar dependencias multimodal
+
+```bash
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+pip install openai-whisper easyocr pymupdf
+```
+
+En Windows instalar ffmpeg:
+
+```bash
+winget install ffmpeg
+```
+
+### Paso 4 — Descargar modelo de embeddings
 
 ```bash
 ollama pull nomic-embed-text
 ```
 
-### Paso 4 — Iniciar MLflow
+### Paso 5 — Iniciar MLflow
 
 ```bash
 mlflow server --host 127.0.0.1 --port 5002
 ```
 
-### Paso 5 — Ejecutar el scraping
+### Paso 6 — Ejecutar el scraping
 
 ```bash
 python -m src.scraper
 ```
 
-Este proceso puede tardar entre 30 y 60 minutos dependiendo del numero de paginas configurado. Al finalizar genera los archivos `claro_content.txt`, `movistar_content.txt` y `tigo_content.txt` en `data/processed/`.
-
-### Paso 6 — Generar el vectorstore
+### Paso 7 — Generar el vectorstore
 
 ```bash
 python -m src.ingest
 ```
 
-Este proceso genera los embeddings y construye la base de datos vectorial en `vectorstore/`. Puede tardar entre 5 y 20 minutos.
+### Paso 8 — Levantar los servicios
 
-### Paso 7 — Levantar los servicios
-
-Abrir cuatro terminales independientes (con el entorno virtual activado en cada una):
+Abrir cuatro terminales independientes con el entorno virtual activado:
 
 Terminal 1 — MLflow:
 ```bash
@@ -324,60 +395,59 @@ docker compose up -d
 
 ### Nota sobre monitoreo
 
-El sistema cuenta con una capa de observabilidad en dos niveles. MLflow registra
-las metricas del pipeline de IA — latencia, scores RAG y experimentos. Prometheus
-y Grafana monitorean la infraestructura — uso de recursos y disponibilidad de los
-servicios en tiempo real.
+El sistema cuenta con una capa de observabilidad en dos niveles. MLflow registra las metricas del pipeline de IA — latencia, scores RAG y experimentos. Prometheus y Grafana monitorean la infraestructura — uso de recursos y disponibilidad de los servicios en tiempo real.
 
-Para generar metricas visibles en MLflow ejecutar:
+Para generar metricas en MLflow:
 
 ```bash
 python -m src.evaluate
 ```
 
-Prometheus y Grafana estan configurados en el docker-compose como capa opcional
-de monitoreo en produccion. Para activarlos:
+Para evaluacion avanzada con RAGAS:
 
 ```bash
-docker compose up -d
+python -m src.evaluate_ragas
 ```
-
-Una vez activos, Grafana estara disponible en http://localhost:3000 con
-credenciales admin/admin. En produccion se recomienda cambiar las credenciales
-por defecto.
 
 ---
 
-## Comandos rápidos con Makefile
+## Comandos rapidos con Makefile
 
-El proyecto incluye un Makefile para simplificar la ejecución de comandos frecuentes.
-En lugar de escribir el comando completo en la terminal, puedes usar:
-
-| Comando          | Equivale a                                              |
+| Comando | Equivale a |
 |---|---|
-| make setup       | pip install -r requirements.txt + playwright install    |
-| make scrape      | python -m src.scraper                                   |
-| make ingest      | python -m src.ingest                                    |
-| make api         | uvicorn api.main:app --reload --host 127.0.0.1 --port 8082 |
-| make streamlit   | streamlit run app/streamlit_app.py --server.port 8503   |
-| make mlflow      | mlflow server --host 127.0.0.1 --port 5002              |
-| make evaluate    | python -m src.evaluate                                  |
-| make clean       | Elimina vectorstore/ y gaia_memory.db               |
-
-Nota: cada comando debe ejecutarse en una terminal independiente
-con el entorno virtual activado (.venv\Scripts\activate en Windows).
+| make setup | pip install -r requirements.txt + playwright install |
+| make scrape | python -m src.scraper |
+| make ingest | python -m src.ingest |
+| make api | uvicorn api.main:app --reload --host 127.0.0.1 --port 8082 |
+| make streamlit | streamlit run app/streamlit_app.py --server.port 8503 |
+| make mlflow | mlflow server --host 127.0.0.1 --port 5002 |
+| make evaluate | python -m src.evaluate |
+| make clean | Elimina vectorstore/ y gaia_memory.db |
 
 ---
 
 ## Evaluacion del Sistema RAG
 
-El modulo `src/evaluate.py` ejecuta un conjunto de preguntas de evaluacion sobre el sistema RAG y registra las metricas en MLflow.
+### Evaluacion basica
+
+El modulo `src/evaluate.py` ejecuta 15 preguntas distribuidas por operador y registra metricas en MLflow.
 
 ```bash
 python -m src.evaluate
 ```
 
-Las metricas registradas incluyen score por pregunta (basado en keywords esperadas), latencia de respuesta, y score promedio global. El reporte se guarda en `reports/evaluation/resultados_evaluacion.json`.
+### Evaluacion avanzada con RAGAS
+
+```bash
+python -m src.evaluate_ragas
+```
+
+| Metrica | Descripcion | Target |
+|---|---|---|
+| Faithfulness | Fidelidad de la respuesta al contexto recuperado | > 0.85 |
+| Answer Relevancy | Relevancia de la respuesta a la pregunta | > 0.80 |
+| Context Precision | Proporcion de chunks relevantes recuperados | > 0.75 |
+| Context Recall | Cobertura de informacion necesaria | > 0.80 |
 
 ---
 
@@ -385,10 +455,10 @@ Las metricas registradas incluyen score por pregunta (basado en keywords esperad
 
 | Experimento | Metricas registradas |
 |---|---|
-| scraping_telecom | paginas_scrapeadas por operador, caracteres, tiempo de ejecucion |
 | build_vectorstore | total_chunks, vectorstore_size, embedding_time_s |
-| evaluacion_rag | score por pregunta, latencia por pregunta, avg_score_global |
-| rag_pipeline (por query) | trazado automaticamente con @mlflow.trace |
+| evaluacion_rag_gaia | score por pregunta, latencia, avg_score_global, avg_score por operador |
+| evaluacion_ragas_gaia | faithfulness, answer_relevancy, context_precision, context_recall, eval_gate |
+| rag_pipeline_gaia | trazado automaticamente con @mlflow.trace por cada consulta |
 
 ---
 
@@ -405,8 +475,8 @@ El checkpointer de LangGraph tambien utiliza SQLite para mantener el estado del 
 - El vectorstore debe regenerarse cada vez que se actualice el contenido scrapeado.
 - El archivo `.env` no debe versionarse. Usar `.env.example` como referencia.
 - Las carpetas `vectorstore/`, `data/processed/*.txt` y `gaia_memory.db` no se versionan.
-- Para multiples proyectos corriendo simultaneamente, asignar puertos distintos a cada uno (MLflow, API y Streamlit).
-- El modelo de embeddings debe estar disponible en Ollama antes de ejecutar el ingest.
+- En despliegues Linux (Streamlit Cloud, Railway, Render) ffmpeg viene preinstalado.
+- Los modelos de Whisper y EasyOCR se descargan automaticamente en el primer uso.
 
 ---
 
@@ -415,9 +485,11 @@ El checkpointer de LangGraph tambien utiliza SQLite para mantener el estado del 
 Este proyecto forma parte de una investigacion sobre experiencia de usuario en sistemas de inteligencia artificial generativa. Los objetivos de investigacion incluyen:
 
 - Evaluar la percepcion de empatia en chatbots basados en GenAI UX vs chatbots tradicionales.
-- Medir usabilidad mediante la escala SUS (System Usability Scale).
+- Medir usabilidad mediante la escala SUS (System Usability Scale de Brooke, 1996) — instrumento de 10 items con score de 0 a 100 donde valores superiores a 68 indican buena usabilidad percibida.
 - Analizar satisfaccion del usuario mediante NPS (Net Promoter Score).
-- Comparar experiencia conversacional entre un modelo FAQ transaccional y una arquitectura conversacional centrada en el usuario.
+- Medir eficiencia operativa mediante la Tasa de Resolucion en Primer Contacto (TRPC).
+- Comparar experiencia conversacional entre un chatbot tradicional y una arquitectura conversacional basada en GenAI UX.
 - Estudiar el impacto de principios de Human-Centered AI en la percepcion de utilidad, confianza y cercania del asistente.
+- Evaluar la calidad del sistema RAG mediante metricas objetivas: faithfulness, answer relevancy, context precision y context recall (Gao et al., 2024).
 
 Los prompts del sistema implementan principios de Conversational UX, UX Writing, empatia operacional y adaptive tone response, alineados con el marco teorico de la investigacion.
