@@ -103,6 +103,10 @@ if "tipo_adjunto" not in st.session_state:
     st.session_state["tipo_adjunto"] = None
 if "mostrar_uploader" not in st.session_state:
     st.session_state["mostrar_uploader"] = None
+if "textarea_key" not in st.session_state:
+    st.session_state["textarea_key"] = 0
+if "texto_transcrito" not in st.session_state:
+    st.session_state["texto_transcrito"] = ""
 
 operador = st.session_state["operador_actual"]
 color_op = OPERADORES[operador]["color"]
@@ -560,13 +564,14 @@ for i, ejemplo in enumerate(preguntas):
 st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 st.markdown('<div class="section-title">Tu consulta</div>', unsafe_allow_html=True)
 
-# Limpiar textarea
+# Limpiar textarea o cargar texto transcrito
 if st.session_state.get("limpiar_textarea", False):
     st.session_state["pregunta_actual"] = ""
+    st.session_state["texto_transcrito"] = ""
+    st.session_state["textarea_key"] += 1
     st.session_state["limpiar_textarea"] = False
 
-# Cargar texto transcrito en el textarea
-_valor_textarea = st.session_state.pop("texto_transcrito", "") or st.session_state.get("pregunta_actual", "")
+_texto_inicial = st.session_state.get("texto_transcrito", "") or st.session_state.get("pregunta_actual", "")
 
 # ── Textarea ──────────────────────────────────────────────────────────────────
 pregunta = st.text_area(
@@ -574,8 +579,8 @@ pregunta = st.text_area(
     placeholder=op_info["placeholder"],
     height=110,
     label_visibility="collapsed",
-    key="textarea_principal",
-    value=_valor_textarea,
+    key=f"textarea_principal_{st.session_state['textarea_key']}",
+    value=_texto_inicial,
 )
 
 # ── Botones multimodal: ícono arriba + botón abajo ────────────────────────────
@@ -666,6 +671,7 @@ elif st.session_state["mostrar_uploader"] == "audio":
                 result = resp.json()
                 if result.get("success") and result.get("text"):
                     st.session_state["texto_transcrito"] = result["text"]
+                    st.session_state["textarea_key"] += 1
                     st.session_state["mostrar_uploader"] = None
                     st.rerun()
                 else:
@@ -796,6 +802,7 @@ elif consultar and (hay_texto or hay_archivo):
                     st.session_state["sesiones"][sid]["nombre"] = nombre_conv
 
                 st.session_state["limpiar_textarea"] = True
+                st.session_state["texto_transcrito"] = ""
                 st.session_state["archivo_adjunto"] = None
                 st.session_state["tipo_adjunto"] = None
                 st.session_state["mostrar_uploader"] = None
