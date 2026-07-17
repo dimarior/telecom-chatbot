@@ -357,6 +357,12 @@ async def ask_document_endpoint(
 
     if not pdf_bytes:
         raise HTTPException(status_code=400, detail="Archivo PDF vacío.")
+    
+    if len(pdf_bytes) > 5 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail="El archivo PDF supera el límite de 5 MB. Por favor comprime el documento e intenta de nuevo."
+    )
 
     pdf_result = extract_text_from_pdf(pdf_bytes, filename=documento.filename or "document.pdf")
 

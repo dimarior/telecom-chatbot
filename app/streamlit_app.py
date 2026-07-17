@@ -643,14 +643,17 @@ if st.session_state["mostrar_uploader"] == "imagen":
 
 elif st.session_state["mostrar_uploader"] == "documento":
     archivo = st.file_uploader(
-        "Selecciona un PDF",
+        "Selecciona un PDF (máximo 5 MB)",
         type=["pdf"],
         key="uploader_doc",
         label_visibility="collapsed",
     )
     if archivo:
-        st.session_state["archivo_adjunto"] = archivo
-        st.session_state["tipo_adjunto"] = "documento"
+        if len(archivo.getvalue()) > 5 * 1024 * 1024:
+            st.error("El archivo supera el límite de 5 MB. Por favor usa un PDF más pequeño.")
+        else:
+            st.session_state["archivo_adjunto"] = archivo
+            st.session_state["tipo_adjunto"] = "documento"
 
 elif st.session_state["mostrar_uploader"] == "audio":
     audio_grabado = st.audio_input(
