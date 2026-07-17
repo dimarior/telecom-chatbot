@@ -638,8 +638,11 @@ if st.session_state["mostrar_uploader"] == "imagen":
         label_visibility="collapsed",
     )
     if archivo:
-        st.session_state["archivo_adjunto"] = archivo
-        st.session_state["tipo_adjunto"] = "imagen"
+        if len(archivo.getvalue()) > 5 * 1024 * 1024:
+            st.error("La imagen supera el límite de 5 MB. Por favor usa una imagen más pequeña.")
+        else:
+            st.session_state["archivo_adjunto"] = archivo
+            st.session_state["tipo_adjunto"] = "imagen"
 
 elif st.session_state["mostrar_uploader"] == "documento":
     archivo = st.file_uploader(

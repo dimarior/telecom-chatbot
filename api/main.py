@@ -303,6 +303,13 @@ async def ask_image_endpoint(
 
     if not imagen_bytes:
         raise HTTPException(status_code=400, detail="Archivo de imagen vacío.")
+    
+    # Validar tamaño máximo 5MB
+    if len(imagen_bytes) > 5 * 1024 * 1024:
+        raise HTTPException(
+        status_code=413,
+        detail="La imagen supera el límite de 5 MB. Por favor usa una imagen más pequeña."
+    )
 
     ocr_result = extract_text_from_image(imagen_bytes, filename=imagen.filename or "image.jpg")
     texto_ocr = ocr_result["text"] if ocr_result["success"] else ""
@@ -358,6 +365,7 @@ async def ask_document_endpoint(
     if not pdf_bytes:
         raise HTTPException(status_code=400, detail="Archivo PDF vacío.")
     
+    # Validar tamaño máximo 5MB
     if len(pdf_bytes) > 5 * 1024 * 1024:
         raise HTTPException(
             status_code=413,
