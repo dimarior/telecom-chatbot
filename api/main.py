@@ -5,6 +5,7 @@ FastAPI con LangGraph y soporte multimodal para GAIA Telecom.
 
 Endpoints:
   GET  /health           → Estado del sistema
+  POST /transcribe       → Solo transcribe audio sin procesar con LangGraph
   POST /ask              → Pipeline RAG simple (texto)
   POST /ask/graph        → Pipeline LangGraph completo (texto)
   POST /ask/audio        → Pipeline con entrada de voz (Whisper)
@@ -123,7 +124,14 @@ class MultimodalResponse(BaseModel):
     paginas: int = 0
 
 
-# ── Endpoints de texto ────────────────────────────────────────────────────────
+class TranscribeResponse(BaseModel):
+    text: str
+    language: str = "es"
+    success: bool
+    error: str | None = None
+
+
+# ── Health ────────────────────────────────────────────────────────────────────
 
 @app.get("/health")
 async def health():
@@ -131,12 +139,43 @@ async def health():
         "status": "ok",
         "service": API_TITLE,
         "multimodal": {
-            "audio": "whisper-base-cpu",
+            "audio": "faster-whisper-base-cpu",
             "imagen": "easyocr-es-en",
             "documento": "pymupdf",
         }
     }
 
+
+# ── Transcripción (solo texto, sin LangGraph) ─────────────────────────────────
+
+@app.post("/transcribe", response_model=TranscribeResponse)
+async def transcribe_endpoint(
+    audio: UploadFile = File(..., description="Archivo de audio a transcribir"),
+    session_id: str = Form(default="default"),
+):
+    """
+    Solo transcribe el audio y retorna el texto.
+    No procesa con LangGraph — el usuario revisa el texto
+    y luego decide enviarlo a GAIA.
+    """
+    from src.multimodal.audio import transcribe_audio
+
+    audio_bytes = await audio.read()
+
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="Archivo de audio vacío.")
+
+    result = transcribe_audio(audio_bytes, filename=audio.filename or "audio.wav")
+
+    return TranscribeResponse(
+        text=result["text"],
+        language=result.get("language", "es"),
+        success=result["success"],
+        error=result.get("error"),
+    )
+
+
+# ── Endpoints de texto ────────────────────────────────────────────────────────
 
 @app.post("/ask", response_model=AskResponse)
 async def ask_endpoint(body: AskRequest):
@@ -191,7 +230,7 @@ async def ask_audio_endpoint(
 ):
     """
     Pipeline con entrada de voz.
-    Transcribe el audio con Whisper y procesa con LangGraph.
+    Transcribe el audio con faster-whisper y procesa con LangGraph.
     """
     from langchain_core.messages import AIMessage
     from src.multimodal.audio import transcribe_audio

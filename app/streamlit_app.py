@@ -496,7 +496,7 @@ if historial_actual:
             modalidad = msg.get("modalidad", "texto")
             badge = ""
             if modalidad == "audio":
-                badge = f'<div class="chat-user-badge">🎤 Audio: {msg.get("archivo","")}</div>'
+                badge = '<div class="chat-user-badge">🎤 Voz transcrita</div>'
             elif modalidad == "imagen":
                 badge = f'<div class="chat-user-badge">🖼 Imagen: {msg.get("archivo","")}</div>'
             elif modalidad == "documento":
@@ -563,8 +563,10 @@ st.markdown('<div class="section-title">Tu consulta</div>', unsafe_allow_html=Tr
 # Limpiar textarea
 if st.session_state.get("limpiar_textarea", False):
     st.session_state["pregunta_actual"] = ""
-    st.session_state["textarea_principal"] = ""
     st.session_state["limpiar_textarea"] = False
+
+# Cargar texto transcrito en el textarea
+_valor_textarea = st.session_state.pop("texto_transcrito", "") or st.session_state.get("pregunta_actual", "")
 
 # ── Textarea ──────────────────────────────────────────────────────────────────
 pregunta = st.text_area(
@@ -573,6 +575,7 @@ pregunta = st.text_area(
     height=110,
     label_visibility="collapsed",
     key="textarea_principal",
+    value=_valor_textarea,
 )
 
 # ── Botones multimodal: ícono arriba + botón abajo ────────────────────────────
@@ -650,39 +653,57 @@ elif st.session_state["mostrar_uploader"] == "audio":
         key="grabador_audio",
     )
     if audio_grabado:
-        st.session_state["archivo_adjunto"] = audio_grabado
-        st.session_state["tipo_adjunto"] = "audio"
+        # Transcripción automática al terminar de grabar
+        with st.spinner("Transcribiendo tu mensaje de voz..."):
+            try:
+                audio_grabado.seek(0)
+                files = {"audio": ("audio.wav", audio_grabado.read(), "audio/wav")}
+                data  = {"session_id": st.session_state["session_id"]}
+                resp  = requests.post(
+                    "http://127.0.0.1:8082/transcribe",
+                    files=files, data=data, timeout=60
+                )
+                result = resp.json()
+                if result.get("success") and result.get("text"):
+                    st.session_state["texto_transcrito"] = result["text"]
+                    st.session_state["mostrar_uploader"] = None
+                    st.rerun()
+                else:
+                    st.error(f"No se pudo transcribir: {result.get('error', 'Audio no reconocido')}")
+            except Exception as e:
+                st.error(f"Error al transcribir: {str(e)}")
 
-# Preview del archivo adjunto
+# Preview del archivo adjunto (solo imagen y PDF, no audio)
 if st.session_state["archivo_adjunto"]:
     archivo_adj_prev = st.session_state["archivo_adjunto"]
     tipo_prev = st.session_state["tipo_adjunto"]
-    icono_badge = {"imagen": "🖼", "documento": "📎", "audio": "🎤"}.get(tipo_prev, "📎")
 
-    col_prev, col_rm = st.columns([10, 1])
-    with col_prev:
-        st.markdown(f"""
-        <div class="adjunto-preview">
-            <span>{icono_badge}</span>
-            <span>{archivo_adj_prev.name}</span>
-            <span style="color:rgba(79,227,224,0.5);font-size:0.7rem;">
-                {round(len(archivo_adj_prev.getvalue()) / 1024, 1)} KB
-            </span>
-        </div>
-        """, unsafe_allow_html=True)
-        if tipo_prev == "imagen":
-            try:
-                img_preview = Image.open(archivo_adj_prev)
-                st.image(img_preview, width=200)
-                archivo_adj_prev.seek(0)
-            except Exception:
-                pass
-    with col_rm:
-        if st.button("✕", key="rm_adj", help="Quitar archivo"):
-            st.session_state["archivo_adjunto"] = None
-            st.session_state["tipo_adjunto"] = None
-            st.session_state["mostrar_uploader"] = None
-            st.rerun()
+    if tipo_prev in ("imagen", "documento"):
+        icono_badge = {"imagen": "🖼", "documento": "📎"}.get(tipo_prev, "📎")
+        col_prev, col_rm = st.columns([10, 1])
+        with col_prev:
+            st.markdown(f"""
+            <div class="adjunto-preview">
+                <span>{icono_badge}</span>
+                <span>{archivo_adj_prev.name}</span>
+                <span style="color:rgba(79,227,224,0.5);font-size:0.7rem;">
+                    {round(len(archivo_adj_prev.getvalue()) / 1024, 1)} KB
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
+            if tipo_prev == "imagen":
+                try:
+                    img_preview = Image.open(archivo_adj_prev)
+                    st.image(img_preview, width=200)
+                    archivo_adj_prev.seek(0)
+                except Exception:
+                    pass
+        with col_rm:
+            if st.button("✕", key="rm_adj", help="Quitar archivo"):
+                st.session_state["archivo_adjunto"] = None
+                st.session_state["tipo_adjunto"] = None
+                st.session_state["mostrar_uploader"] = None
+                st.rerun()
 
 # ── Botón principal ───────────────────────────────────────────────────────────
 consultar = st.button("Consultar con GAIA ✦", type="primary", use_container_width=True)
