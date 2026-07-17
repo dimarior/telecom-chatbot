@@ -666,7 +666,7 @@ elif st.session_state["mostrar_uploader"] == "audio":
                 data  = {"session_id": st.session_state["session_id"]}
                 resp  = requests.post(
                     "http://127.0.0.1:8082/transcribe",
-                    files=files, data=data, timeout=60
+                    files=files, data=data, timeout=180
                 )
                 result = resp.json()
                 if result.get("success") and result.get("text"):

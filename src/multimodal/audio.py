@@ -81,6 +81,9 @@ def transcribe_audio(audio_bytes: bytes, filename: str = "audio.wav") -> dict:
                 tmp_path,
                 language="es",
                 beam_size=5,
+                vad_filter=True,
+                vad_parameters=dict(min_silence_duration_ms=500),
+                condition_on_previous_text=True,
             )
 
             text = " ".join(segment.text for segment in segments).strip()
