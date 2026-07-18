@@ -382,7 +382,11 @@ async def ask_document_endpoint(
 
     texto_pdf = pdf_result["text"]
     paginas = pdf_result["pages"]
-    contexto_doc = describe_document_context(texto_pdf, filename=documento.filename or "")
+    contexto_doc = describe_document_context(
+    texto_pdf,
+    filename=documento.filename or "",
+    ocr_used=pdf_result.get("ocr_used", False)
+    )
 
     if pregunta_adicional.strip():
         pregunta_final = f"{contexto_doc}\n\nPregunta del usuario: {pregunta_adicional}"

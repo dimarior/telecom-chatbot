@@ -3,7 +3,6 @@ src/multimodal/document.py
 ──────────────────────────
 Módulo de procesamiento de documentos PDF para GAIA.
 Extrae texto de archivos PDF usando PyMuPDF (fitz).
-Si el PDF es escaneado (sin texto seleccionable), aplica EasyOCR como fallback.
 
 Casos de uso en telecomunicaciones:
   - Factura en PDF → extraer valor, fecha de vencimiento, conceptos
@@ -24,14 +23,17 @@ _LOG = logging.getLogger("gaia.multimodal.document")
 def extract_text_from_pdf(pdf_bytes: bytes, filename: str = "document.pdf") -> dict:
     """
     Extrae texto de un archivo PDF usando PyMuPDF.
-    Si el PDF no tiene texto seleccionable (escaneado), aplica EasyOCR como fallback.
 
     Args:
         pdf_bytes: Contenido del PDF en bytes.
         filename: Nombre original del archivo.
 
     Returns:
-        dict con text, pages, success, error.
+        dict con:
+          - text: texto extraído completo
+          - pages: número de páginas procesadas
+          - success: True si extrajo texto correctamente
+          - error: mensaje de error si success=False
     """
     import time
 
@@ -50,6 +52,7 @@ def extract_text_from_pdf(pdf_bytes: bytes, filename: str = "document.pdf") -> d
         t0 = time.time()
         _LOG.info("Extrayendo texto de PDF '%s'...", filename)
 
+        # Guardar en archivo temporal
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False, mode="wb") as tmp:
             tmp.write(pdf_bytes)
             tmp_path = tmp.name
@@ -65,25 +68,42 @@ def extract_text_from_pdf(pdf_bytes: bytes, filename: str = "document.pdf") -> d
                     pages_text.append(f"[Página {page_num + 1}]\n{text.strip()}")
 
             doc.close()
+            elapsed = round(time.time() - t0, 2)
             full_text = "\n\n".join(pages_text)
 
-            # Si no hay texto seleccionable, aplicar OCR como fallback
             if not full_text.strip():
-                _LOG.info("PDF sin texto seleccionable, aplicando OCR como fallback...")
-                full_text, pages_text = _ocr_fallback(tmp_path)
-
-                if not full_text.strip():
+                # PDF escaneado — intentar OCR con EasyOCR
+                _LOG.info("PDF sin texto seleccionable, intentando OCR...")
+                try:
+                    import fitz
+                    import easyocr
+                    ocr_reader = easyocr.Reader(["es", "en"], gpu=False, verbose=False)
+                    doc_ocr = fitz.open(tmp_path)
+                    ocr_texts = []
+                    for page_num in range(len(doc_ocr)):
+                        page = doc_ocr[page_num]
+                        pix = page.get_pixmap(dpi=200)
+                        img_bytes = pix.tobytes("png")
+                        results = ocr_reader.readtext(img_bytes, detail=0)
+                        if results:
+                            ocr_texts.append(f"[Página {page_num + 1}]\n" + " ".join(results))
+                    doc_ocr.close()
+                    full_text = "\n\n".join(ocr_texts)
+                    if not full_text.strip():
+                        return {
+                             "text": "",
+                             "pages": 0,
+                             "success": False,
+                             "error": "No se pudo extraer texto del PDF. Intenta enviar una foto del documento.",
+                         }
+                except Exception as ocr_err:
                     return {
                         "text": "",
                         "pages": 0,
                         "success": False,
-                        "error": (
-                            "No se pudo extraer texto del PDF. "
-                            "Intenta enviar una foto del documento usando el botón Imagen."
-                        ),
+                        "error": "El PDF es una imagen escaneada y no se pudo procesar con OCR.",
                     }
 
-            elapsed = round(time.time() - t0, 2)
             _LOG.info(
                 "PDF procesado en %ss | páginas=%d | chars=%d",
                 elapsed, len(pages_text), len(full_text)
@@ -110,52 +130,6 @@ def extract_text_from_pdf(pdf_bytes: bytes, filename: str = "document.pdf") -> d
         }
 
 
-def _ocr_fallback(pdf_path: str) -> tuple[str, list[str]]:
-    """
-    Aplica EasyOCR a cada página del PDF escaneado.
-    Rasteriza cada página a imagen y extrae el texto con OCR.
-
-    Returns:
-        Tupla (texto_completo, lista_de_paginas)
-    """
-    try:
-        import fitz
-        import easyocr
-
-        _LOG.info("Cargando EasyOCR para PDF escaneado...")
-        ocr_reader = easyocr.Reader(["es", "en"], gpu=False, verbose=False)
-
-        doc = fitz.open(pdf_path)
-        pages_text = []
-
-        for page_num in range(len(doc)):
-            page = doc[page_num]
-            # Rasterizar página a imagen con alta resolución
-            pix = page.get_pixmap(dpi=200)
-            img_bytes = pix.tobytes("png")
-
-            # Aplicar OCR a la imagen
-            results = ocr_reader.readtext(img_bytes, detail=0)
-            if results:
-                page_text = " ".join(results).strip()
-                if page_text:
-                    pages_text.append(f"[Página {page_num + 1}]\n{page_text}")
-
-        doc.close()
-        full_text = "\n\n".join(pages_text)
-
-        _LOG.info(
-            "OCR fallback completado | páginas=%d | chars=%d",
-            len(pages_text), len(full_text)
-        )
-
-        return full_text, pages_text
-
-    except Exception as e:
-        _LOG.error("Error en OCR fallback: %s", str(e))
-        return "", []
-
-
 def describe_document_context(text: str, filename: str = "") -> str:
     """
     Genera un prompt enriquecido con el contexto del documento
@@ -168,12 +142,17 @@ def describe_document_context(text: str, filename: str = "") -> str:
     text_truncado = text[:3000] + "..." if len(text) > 3000 else text
 
     context = (
-        f"El usuario envió un documento PDF"
-        f"{f' ({filename})' if filename else ''}.\n\n"
-        f"Contenido extraído del documento:\n"
-        f"---\n{text_truncado}\n---\n\n"
-        f"Por favor analiza este documento y ayuda al usuario con su consulta "
-        f"relacionada con los servicios de telecomunicaciones."
+        f"El usuario ha compartido el siguiente documento PDF"
+        f"{f' llamado {filename}' if filename else ''}. "
+        f"A continuación está el texto completo extraído del documento. "
+        f"IMPORTANTE: Debes responder ÚNICAMENTE basándote en el contenido "
+        f"del documento que se muestra a continuación. NO digas que no tienes "
+        f"acceso al documento. El texto ya fue extraído y está disponible:\n\n"
+        f"=== CONTENIDO DEL DOCUMENTO ===\n"
+        f"{text_truncado}\n"
+        f"=== FIN DEL DOCUMENTO ===\n\n"
+        f"Analiza el contenido anterior y responde la consulta del usuario "
+        f"sobre sus servicios de telecomunicaciones."
     )
     return context
 
