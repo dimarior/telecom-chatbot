@@ -417,6 +417,8 @@ Para evaluación avanzada con RAGAS:
 python -m src.evaluate_ragas
 ```
 
+En el despliegue en Streamlit Community Cloud, MLflow, Prometheus y Grafana no están disponibles ya que requieren servicios locales. Las métricas de evaluación RAG con RAGAS se ejecutan localmente antes del despliegue y los resultados se guardan en reports/evaluation/. Para las pruebas con usuarios, las métricas de NPS, SUS y percepción de empatía se recolectan mediante formularios externos como Google Forms.
+
 ---
 
 ## Despliegue en Streamlit Community Cloud
