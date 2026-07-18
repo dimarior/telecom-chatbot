@@ -22,7 +22,7 @@ import aiosqlite
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from pydantic import BaseModel
 
@@ -59,7 +59,9 @@ def _configure_langsmith() -> None:
 async def lifespan(app: FastAPI):
     _configure_langsmith()
 
-    embeddings = OllamaEmbeddings(base_url=OLLAMA_HOST, model=OLLAMA_EMBEDDING_MODEL)
+    embeddings = HuggingFaceEmbeddings(
+    model_name="paraphrase-multilingual-mpnet-base-v2"
+    )
     app.state.vector_store = Chroma(
         persist_directory=str(VECTORSTORE_DIR),
         embedding_function=embeddings,

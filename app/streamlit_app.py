@@ -524,7 +524,7 @@ PREGUNTAS = {
         "¿Cuáles son los planes de internet hogar disponibles?",
         "¿Cómo reporto una falla técnica?",
         "¿Cómo pago mi factura en línea?",
-        "¿Qué es la autogestión y cómo funciona?",
+        "¿Cómo puedo registrar el IMEI de mi celular?",
         "¿Cuáles son los canales de atención al cliente?",
     ],
     "claro": [

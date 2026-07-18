@@ -17,7 +17,7 @@ import time
 
 import mlflow
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from src.config import (
@@ -103,11 +103,10 @@ def build_vectorstore() -> None:
         mlflow.log_metric("total_pages", len(all_texts))
         mlflow.log_metric("total_chunks", len(docs))
 
-        _LOG.info("🔢 Generando embeddings con %s...", OLLAMA_EMBEDDING_MODEL)
+        _LOG.info("🔢 Generando embeddings con paraphrase-multilingual-mpnet-base-v2...")
         t0 = time.time()
-        embeddings = OllamaEmbeddings(
-            base_url=OLLAMA_HOST,
-            model=OLLAMA_EMBEDDING_MODEL,
+        embeddings = HuggingFaceEmbeddings(
+            model_name="paraphrase-multilingual-mpnet-base-v2"
         )
 
         # Limpiar vectorstore previo si existe
