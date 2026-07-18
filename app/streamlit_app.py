@@ -811,9 +811,7 @@ elif consultar and (hay_texto or hay_archivo):
                 texto_ocr = ocr_result["text"] if ocr_result["success"] else ""
                 contexto = describe_image_context(texto_ocr, filename=archivo_adj.name)
                 if pregunta.strip():
-                    contexto += f"
-
-Pregunta del usuario: {pregunta.strip()}"
+                    contexto += f"\n\nPregunta del usuario: {pregunta.strip()}"
                 result = invoke_graph(contexto, session_id)
                 modalidad_enviada = "imagen"
                 contenido_usuario = f"[Imagen: {archivo_adj.name}]"
@@ -833,9 +831,7 @@ Pregunta del usuario: {pregunta.strip()}"
                     ocr_used=pdf_result.get("ocr_used", False)
                 )
                 if pregunta.strip():
-                    contexto += f"
-
-Pregunta del usuario: {pregunta.strip()}"
+                    contexto += f"\n\nPregunta del usuario: {pregunta.strip()}"
                 result = invoke_graph(contexto, session_id)
                 modalidad_enviada = "documento"
                 contenido_usuario = f"[PDF: {archivo_adj.name}]"
