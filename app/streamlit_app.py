@@ -693,14 +693,14 @@ if st.session_state["mostrar_uploader"] == "imagen":
 
 elif st.session_state["mostrar_uploader"] == "documento":
     archivo = st.file_uploader(
-        "Selecciona un PDF (máximo 5 MB)",
+        "Selecciona un PDF (máximo 2 MB)",
         type=["pdf"],
         key="uploader_doc",
         label_visibility="collapsed",
     )
     if archivo:
-        if len(archivo.getvalue()) > 5 * 1024 * 1024:
-            st.error("El archivo supera el límite de 5 MB. Por favor usa un PDF más pequeño.")
+        if len(archivo.getvalue()) > 2 * 1024 * 1024:
+            st.error("El archivo supera el límite de 2 MB. Por favor usa un PDF más pequeño.")
         else:
             st.session_state["archivo_adjunto"] = archivo
             st.session_state["tipo_adjunto"] = "documento"
@@ -714,14 +714,6 @@ elif st.session_state["mostrar_uploader"] == "audio":
         # Transcripción automática al terminar de grabar
         with st.spinner("Transcribiendo tu mensaje de voz..."):
             try:
-                audio_grabado.seek(0)
-                files = {"audio": ("audio.wav", audio_grabado.read(), "audio/wav")}
-                data  = {"session_id": st.session_state["session_id"]}
-                resp  = requests.post(
-                    "http://127.0.0.1:8082/transcribe",
-                    files=files, data=data, timeout=180
-                )
-                result = resp.json()
                 from src.multimodal.audio import transcribe_audio
                 audio_grabado.seek(0)
                 trans_result = transcribe_audio(audio_grabado.read(), filename="audio.wav")
