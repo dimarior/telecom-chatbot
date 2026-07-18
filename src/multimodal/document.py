@@ -3,11 +3,13 @@ src/multimodal/document.py
 ──────────────────────────
 Módulo de procesamiento de documentos PDF para GAIA.
 Extrae texto de archivos PDF usando PyMuPDF (fitz).
+Si el PDF es escaneado (sin texto seleccionable), aplica EasyOCR como fallback.
 
 Casos de uso en telecomunicaciones:
   - Factura en PDF → extraer valor, fecha de vencimiento, conceptos
   - Contrato en PDF → identificar cláusulas relevantes
   - Comprobante de pago → verificar datos de la transacción
+  - Documentos escaneados → OCR automático como fallback
 """
 from __future__ import annotations
 
@@ -22,17 +24,14 @@ _LOG = logging.getLogger("gaia.multimodal.document")
 def extract_text_from_pdf(pdf_bytes: bytes, filename: str = "document.pdf") -> dict:
     """
     Extrae texto de un archivo PDF usando PyMuPDF.
+    Si el PDF no tiene texto seleccionable (escaneado), aplica EasyOCR como fallback.
 
     Args:
         pdf_bytes: Contenido del PDF en bytes.
         filename: Nombre original del archivo.
 
     Returns:
-        dict con:
-          - text: texto extraído completo
-          - pages: número de páginas procesadas
-          - success: True si extrajo texto correctamente
-          - error: mensaje de error si success=False
+        dict con text, pages, success, error.
     """
     import time
 
@@ -51,7 +50,6 @@ def extract_text_from_pdf(pdf_bytes: bytes, filename: str = "document.pdf") -> d
         t0 = time.time()
         _LOG.info("Extrayendo texto de PDF '%s'...", filename)
 
-        # Guardar en archivo temporal
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False, mode="wb") as tmp:
             tmp.write(pdf_bytes)
             tmp_path = tmp.name
@@ -67,20 +65,25 @@ def extract_text_from_pdf(pdf_bytes: bytes, filename: str = "document.pdf") -> d
                     pages_text.append(f"[Página {page_num + 1}]\n{text.strip()}")
 
             doc.close()
-            elapsed = round(time.time() - t0, 2)
             full_text = "\n\n".join(pages_text)
 
+            # Si no hay texto seleccionable, aplicar OCR como fallback
             if not full_text.strip():
-                return {
-                    "text": "",
-                    "pages": len(pages_text),
-                    "success": False,
-                    "error": (
-                        "El PDF no contiene texto seleccionable. "
-                        "Puede ser un PDF escaneado. Intenta enviar una foto del documento."
-                    ),
-                }
+                _LOG.info("PDF sin texto seleccionable, aplicando OCR como fallback...")
+                full_text, pages_text = _ocr_fallback(tmp_path)
 
+                if not full_text.strip():
+                    return {
+                        "text": "",
+                        "pages": 0,
+                        "success": False,
+                        "error": (
+                            "No se pudo extraer texto del PDF. "
+                            "Intenta enviar una foto del documento usando el botón Imagen."
+                        ),
+                    }
+
+            elapsed = round(time.time() - t0, 2)
             _LOG.info(
                 "PDF procesado en %ss | páginas=%d | chars=%d",
                 elapsed, len(pages_text), len(full_text)
@@ -105,6 +108,52 @@ def extract_text_from_pdf(pdf_bytes: bytes, filename: str = "document.pdf") -> d
             "success": False,
             "error": f"Error procesando el documento: {str(e)}",
         }
+
+
+def _ocr_fallback(pdf_path: str) -> tuple[str, list[str]]:
+    """
+    Aplica EasyOCR a cada página del PDF escaneado.
+    Rasteriza cada página a imagen y extrae el texto con OCR.
+
+    Returns:
+        Tupla (texto_completo, lista_de_paginas)
+    """
+    try:
+        import fitz
+        import easyocr
+
+        _LOG.info("Cargando EasyOCR para PDF escaneado...")
+        ocr_reader = easyocr.Reader(["es", "en"], gpu=False, verbose=False)
+
+        doc = fitz.open(pdf_path)
+        pages_text = []
+
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            # Rasterizar página a imagen con alta resolución
+            pix = page.get_pixmap(dpi=200)
+            img_bytes = pix.tobytes("png")
+
+            # Aplicar OCR a la imagen
+            results = ocr_reader.readtext(img_bytes, detail=0)
+            if results:
+                page_text = " ".join(results).strip()
+                if page_text:
+                    pages_text.append(f"[Página {page_num + 1}]\n{page_text}")
+
+        doc.close()
+        full_text = "\n\n".join(pages_text)
+
+        _LOG.info(
+            "OCR fallback completado | páginas=%d | chars=%d",
+            len(pages_text), len(full_text)
+        )
+
+        return full_text, pages_text
+
+    except Exception as e:
+        _LOG.error("Error en OCR fallback: %s", str(e))
+        return "", []
 
 
 def describe_document_context(text: str, filename: str = "") -> str:

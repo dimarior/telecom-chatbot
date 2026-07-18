@@ -559,7 +559,9 @@ cols = st.columns(3)
 for i, ejemplo in enumerate(preguntas):
     if cols[i % 3].button(ejemplo, key=f"ej_{i}", use_container_width=True):
         st.session_state["pregunta_actual"] = ejemplo
-        st.session_state["textarea_principal"] = ejemplo
+        st.session_state["texto_transcrito"] = ejemplo
+        st.session_state["textarea_key"] += 1
+        st.rerun()
 
 st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 st.markdown('<div class="section-title">Tu consulta</div>', unsafe_allow_html=True)
