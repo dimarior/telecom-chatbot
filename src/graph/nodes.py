@@ -270,15 +270,15 @@ def make_retrieve_node(vector_store: Chroma, top_k: int = RETRIEVER_K):
             state["question"], k=k
 )
 
-chunks: list[dict] = []
-for doc in docs:
-    meta = doc.metadata or {}
-    chunks.append({
-        "content": doc.page_content,
-        "url": meta.get("url", ""),
-        "title": meta.get("title", ""),
-        "score": 1.0,
-    })
+        chunks: list[dict] = []
+        for doc in docs:
+            meta = doc.metadata or {}
+            chunks.append({
+                "content": doc.page_content,
+                "url": meta.get("url", ""),
+                "title": meta.get("title", ""),
+                "score": 1.0,
+            })
 
         # Construir bloque de contexto
         blocks: list[str] = []
