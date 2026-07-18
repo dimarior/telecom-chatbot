@@ -12,9 +12,12 @@ from pathlib import Path
 from PIL import Image
 import streamlit as st
 
+# Agregar la raíz del proyecto al path para que encuentre src/
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 MODELO_ACTIVO = "mistral-small-latest"
 ASSETS        = Path("app/assets")
-
 
 @st.cache_resource(show_spinner="Iniciando GAIA...")
 def get_graph():
