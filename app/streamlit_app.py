@@ -676,14 +676,14 @@ with col_b3:
 # Uploaders dinámicos
 if st.session_state["mostrar_uploader"] == "imagen":
     archivo = st.file_uploader(
-        "Selecciona una imagen",
+        "Selecciona una imagen (máximo 2 MB)",
         type=["jpg", "jpeg", "png", "webp", "bmp"],
         key="uploader_imagen",
         label_visibility="collapsed",
     )
     if archivo:
-        if len(archivo.getvalue()) > 5 * 1024 * 1024:
-            st.error("La imagen supera el límite de 5 MB. Por favor usa una imagen más pequeña.")
+        if len(archivo.getvalue()) > 2 * 1024 * 1024:
+            st.error("La imagen supera el límite de 2 MB. Por favor usa una imagen más pequeña.")
         else:
             st.session_state["archivo_adjunto"] = archivo
             st.session_state["tipo_adjunto"] = "imagen"
