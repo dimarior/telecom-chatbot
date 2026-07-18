@@ -6,9 +6,13 @@ langchain-text-splitters>=0.3.0
 langchain-chroma>=0.1.0
 chromadb>=0.5.0
 
+# ─── Embeddings ───────────────────────────────────────────────────────────────
+sentence-transformers>=2.2.0
+langchain-huggingface>=1.0.0
+
 # ─── LLM Providers ───────────────────────────────────────────────────────────
 langchain-mistralai>=0.2.0
-langchain-ollama>=0.2.0       # Opcional para modelo local
+#langchain-ollama>=0.2.0       # Opcional para modelo local
 
 # ─── LangGraph ───────────────────────────────────────────────────────────────
 langgraph>=0.2.0
