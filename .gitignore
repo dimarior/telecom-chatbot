@@ -19,8 +19,7 @@ env/
 data/raw/*.csv
 data/raw/*.json
 data/processed/*.txt
-vectorstore/
-recamier_memory.db
+gaia_memory.db
 mlruns/
 mlartifacts/
 
