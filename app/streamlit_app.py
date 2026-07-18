@@ -50,14 +50,11 @@ def get_graph():
 def invoke_graph(pregunta: str, session_id: str) -> dict:
     """Invoca el grafo LangGraph de forma síncrona."""
     from langchain_core.messages import AIMessage
-    from src.config import MISTRAL_API_KEY
-    import os
-    os.environ.setdefault("MISTRAL_API_KEY", MISTRAL_API_KEY)
 
     graph = get_graph()
     config = {"configurable": {"thread_id": session_id}}
     t0 = time.time()
-    result = asyncio.run(graph.ainvoke({"question": pregunta}, config=config))
+    result = graph.invoke({"question": pregunta}, config=config)
     latencia = round(time.time() - t0, 3)
 
     messages = result.get("messages", [])
