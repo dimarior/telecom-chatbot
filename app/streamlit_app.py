@@ -18,12 +18,10 @@ ASSETS        = Path("app/assets")
 
 @st.cache_resource(show_spinner="Iniciando GAIA...")
 def get_graph():
-    """Inicializa el grafo LangGraph una sola vez y lo cachea en memoria."""
-    import sqlite3
+    """Inicializa el grafo LangGraph sin checkpointer para Streamlit Cloud."""
     from langchain_chroma import Chroma
     from langchain_huggingface import HuggingFaceEmbeddings
-    from langgraph.checkpoint.sqlite import SqliteSaver
-    from src.config import DB_PATH, RETRIEVER_K, VECTORSTORE_DIR
+    from src.config import RETRIEVER_K, VECTORSTORE_DIR
     from src.graph import build_graph
 
     embeddings = HuggingFaceEmbeddings(
@@ -33,11 +31,9 @@ def get_graph():
         persist_directory=str(VECTORSTORE_DIR),
         embedding_function=embeddings,
     )
-    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-    checkpointer = SqliteSaver(conn)
     graph = build_graph(
         vector_store=vector_store,
-        checkpointer=checkpointer,
+        checkpointer=None,
         top_k=RETRIEVER_K,
     )
     return graph
