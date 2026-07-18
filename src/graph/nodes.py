@@ -264,18 +264,18 @@ def make_product_node():
 def make_retrieve_node(vector_store: Chroma, top_k: int = RETRIEVER_K):
     def retrieve_node(state: ChatState) -> dict:
         k = state.get("top_k") or top_k
-        docs_with_scores = vector_store.similarity_search_with_relevance_scores(
+        docs = vector_store.similarity_search(
             state["question"], k=k
-        )
+)
 
-        chunks: list[dict] = []
-        for doc, score in docs_with_scores:
-            meta = doc.metadata or {}
-            chunks.append({
-                "content": doc.page_content,
-                "url": meta.get("url", ""),
-                "title": meta.get("title", ""),
-                "score": round(float(score), 3),
+chunks: list[dict] = []
+for doc in docs:
+    meta = doc.metadata or {}
+    chunks.append({
+        "content": doc.page_content,
+        "url": meta.get("url", ""),
+        "title": meta.get("title", ""),
+        "score": 1.0,
     })
 
         # Construir bloque de contexto
