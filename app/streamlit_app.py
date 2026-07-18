@@ -1,21 +1,73 @@
 """
 app/streamlit_app.py — GAIA Telecom Colombia
+Versión integrada para despliegue en Streamlit Community Cloud.
+Llama directamente a LangGraph sin necesidad de API FastAPI externa.
 """
+import asyncio
 import base64
+import time
 import uuid
 import os
-import requests
 from pathlib import Path
 from PIL import Image
 import streamlit as st
 
-MODELO_ACTIVO  = "mistral-small-latest"
-API_URL        = "http://127.0.0.1:8082/ask/graph"
-API_AUDIO_URL  = "http://127.0.0.1:8082/ask/audio"
-API_IMAGE_URL  = "http://127.0.0.1:8082/ask/image"
-API_DOC_URL    = "http://127.0.0.1:8082/ask/document"
-HEALTH_URL     = "http://127.0.0.1:8082/health"
-ASSETS         = Path("app/assets")
+MODELO_ACTIVO = "mistral-small-latest"
+ASSETS        = Path("app/assets")
+
+
+@st.cache_resource(show_spinner="Iniciando GAIA...")
+def get_graph():
+    """Inicializa el grafo LangGraph una sola vez y lo cachea en memoria."""
+    import sqlite3
+    from langchain_chroma import Chroma
+    from langchain_huggingface import HuggingFaceEmbeddings
+    from langgraph.checkpoint.sqlite import SqliteSaver
+    from src.config import DB_PATH, RETRIEVER_K, VECTORSTORE_DIR
+    from src.graph import build_graph
+
+    embeddings = HuggingFaceEmbeddings(
+        model_name="paraphrase-multilingual-mpnet-base-v2"
+    )
+    vector_store = Chroma(
+        persist_directory=str(VECTORSTORE_DIR),
+        embedding_function=embeddings,
+    )
+    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+    checkpointer = SqliteSaver(conn)
+    graph = build_graph(
+        vector_store=vector_store,
+        checkpointer=checkpointer,
+        top_k=RETRIEVER_K,
+    )
+    return graph
+
+
+def invoke_graph(pregunta: str, session_id: str) -> dict:
+    """Invoca el grafo LangGraph de forma síncrona."""
+    from langchain_core.messages import AIMessage
+    from src.config import MISTRAL_API_KEY
+    import os
+    os.environ.setdefault("MISTRAL_API_KEY", MISTRAL_API_KEY)
+
+    graph = get_graph()
+    config = {"configurable": {"thread_id": session_id}}
+    t0 = time.time()
+    result = asyncio.run(graph.ainvoke({"question": pregunta}, config=config))
+    latencia = round(time.time() - t0, 3)
+
+    messages = result.get("messages", [])
+    respuesta = ""
+    for msg in reversed(messages):
+        if isinstance(msg, AIMessage):
+            respuesta = msg.content
+            break
+
+    return {
+        "respuesta": respuesta,
+        "latencia_segundos": latencia,
+        "sources": result.get("sources", []),
+    }
 
 OPERADORES = {
     "todos": {
@@ -474,20 +526,14 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# Status API
+# Status sistema
 try:
-    health = requests.get(HEALTH_URL, timeout=3)
-    if health.status_code == 200:
-        st.markdown('<div class="status-ok">✦ Sistema conectado y operando correctamente</div>',
-                    unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="status-err">⚠ Estado inesperado de la API</div>',
-                    unsafe_allow_html=True)
-except Exception:
-    st.markdown(f"""
-    <div class="status-err">⚡ API no disponible —
-        <code>uvicorn api.main:app --reload --host 127.0.0.1 --port 8082</code>
-    </div>""", unsafe_allow_html=True)
+    _ = get_graph()
+    st.markdown('<div class="status-ok">✦ Sistema conectado y operando correctamente</div>',
+                unsafe_allow_html=True)
+except Exception as e:
+    st.markdown(f'<div class="status-err">⚠ Error iniciando el sistema: {str(e)}</div>',
+                unsafe_allow_html=True)
 
 # Historial
 historial_actual = st.session_state["sesiones"].get(
@@ -677,13 +723,16 @@ elif st.session_state["mostrar_uploader"] == "audio":
                     files=files, data=data, timeout=180
                 )
                 result = resp.json()
-                if result.get("success") and result.get("text"):
-                    st.session_state["texto_transcrito"] = result["text"]
+                from src.multimodal.audio import transcribe_audio
+                audio_grabado.seek(0)
+                trans_result = transcribe_audio(audio_grabado.read(), filename="audio.wav")
+                if trans_result.get("success") and trans_result.get("text"):
+                    st.session_state["texto_transcrito"] = trans_result["text"]
                     st.session_state["textarea_key"] += 1
                     st.session_state["mostrar_uploader"] = None
                     st.rerun()
                 else:
-                    st.error(f"No se pudo transcribir: {result.get('error', 'Audio no reconocido')}")
+                    st.error(f"No se pudo transcribir: {trans_result.get('error', 'Audio no reconocido')}")
             except Exception as e:
                 st.error(f"Error al transcribir: {str(e)}")
 
@@ -742,33 +791,52 @@ elif consultar and (hay_texto or hay_archivo):
             contenido_usuario = ""
 
             if hay_archivo and tipo_adj == "audio":
+                from src.multimodal.audio import transcribe_audio
                 archivo_adj.seek(0)
-                files  = {"audio": (archivo_adj.name, archivo_adj.read(), "audio/mpeg")}
-                data   = {"session_id": session_id}
-                resp   = requests.post(API_AUDIO_URL, files=files, data=data, timeout=180)
-                result = resp.json()
+                transcripcion = transcribe_audio(archivo_adj.read(), filename=archivo_adj.name)
+                if not transcripcion["success"]:
+                    st.error(f"No se pudo transcribir el audio: {transcripcion['error']}")
+                    st.stop()
+                texto_audio = transcripcion["text"]
+                result = invoke_graph(f"[Voz transcrita] {texto_audio}", session_id)
                 modalidad_enviada = "audio"
                 contenido_usuario = f"[Audio: {archivo_adj.name}]"
                 if hay_texto:
                     contenido_usuario += f" {pregunta.strip()}"
 
             elif hay_archivo and tipo_adj == "imagen":
+                from src.multimodal.image import extract_text_from_image, describe_image_context
                 archivo_adj.seek(0)
-                files  = {"imagen": (archivo_adj.name, archivo_adj.read(), "image/jpeg")}
-                data   = {"session_id": session_id, "pregunta_adicional": pregunta.strip()}
-                resp   = requests.post(API_IMAGE_URL, files=files, data=data, timeout=180)
-                result = resp.json()
+                ocr_result = extract_text_from_image(archivo_adj.read(), filename=archivo_adj.name)
+                texto_ocr = ocr_result["text"] if ocr_result["success"] else ""
+                contexto = describe_image_context(texto_ocr, filename=archivo_adj.name)
+                if pregunta.strip():
+                    contexto += f"
+
+Pregunta del usuario: {pregunta.strip()}"
+                result = invoke_graph(contexto, session_id)
                 modalidad_enviada = "imagen"
                 contenido_usuario = f"[Imagen: {archivo_adj.name}]"
                 if hay_texto:
                     contenido_usuario += f" {pregunta.strip()}"
 
             elif hay_archivo and tipo_adj == "documento":
+                from src.multimodal.document import extract_text_from_pdf, describe_document_context
                 archivo_adj.seek(0)
-                files  = {"documento": (archivo_adj.name, archivo_adj.read(), "application/pdf")}
-                data   = {"session_id": session_id, "pregunta_adicional": pregunta.strip()}
-                resp   = requests.post(API_DOC_URL, files=files, data=data, timeout=180)
-                result = resp.json()
+                pdf_result = extract_text_from_pdf(archivo_adj.read(), filename=archivo_adj.name)
+                if not pdf_result["success"]:
+                    st.error(f"No se pudo procesar el PDF: {pdf_result['error']}")
+                    st.stop()
+                contexto = describe_document_context(
+                    pdf_result["text"],
+                    filename=archivo_adj.name,
+                    ocr_used=pdf_result.get("ocr_used", False)
+                )
+                if pregunta.strip():
+                    contexto += f"
+
+Pregunta del usuario: {pregunta.strip()}"
+                result = invoke_graph(contexto, session_id)
                 modalidad_enviada = "documento"
                 contenido_usuario = f"[PDF: {archivo_adj.name}]"
                 if hay_texto:
@@ -778,12 +846,7 @@ elif consultar and (hay_texto or hay_archivo):
                 pregunta_enriquecida = pregunta.strip()
                 if operador_sel != "todos":
                     pregunta_enriquecida = f"[{OPERADORES[operador_sel]['nombre']}] {pregunta.strip()}"
-                resp   = requests.post(
-                    API_URL,
-                    json={"pregunta": pregunta_enriquecida, "session_id": session_id},
-                    timeout=120,
-                )
-                result = resp.json()
+                result = invoke_graph(pregunta_enriquecida, session_id)
                 modalidad_enviada = "texto"
                 contenido_usuario = pregunta.strip()
 
@@ -848,10 +911,6 @@ elif consultar and (hay_texto or hay_archivo):
                 error_msg = result.get("detail", result.get("error", "Error desconocido")) if result else "Sin respuesta"
                 st.error(f"Error: {error_msg}")
 
-        except requests.exceptions.ConnectionError:
-            st.error("❌ No se pudo conectar con la API en :8082")
-        except requests.exceptions.Timeout:
-            st.warning("⏳ La consulta tardó demasiado. Intenta de nuevo.")
         except Exception as e:
             st.error(f"Error inesperado: {str(e)}")
 
