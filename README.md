@@ -455,9 +455,11 @@ maxUploadSize = 5
 5. En Advanced settings agregar las variables de entorno: MISTRAL_API_KEY y WHISPER_MODEL=small.
 6. Hacer clic en Deploy.
 
-### Consideración sobre la API
+### Consideración sobre el despliegue
 
-La interfaz Streamlit apunta a la API en http://127.0.0.1:8082. Para un despliegue completo en la nube, la API FastAPI debe desplegarse en un servicio separado como Railway o Render (ambos con free tier disponible), y la variable API_URL en streamlit_app.py debe actualizarse con la URL pública de la API.
+Para el despliegue en Streamlit Community Cloud, la lógica conversacional se integra directamente en la interfaz Streamlit, eliminando la dependencia de la API FastAPI como servicio externo. LangGraph, ChromaDB y los módulos multimodales corren dentro del mismo proceso de Streamlit. La API FastAPI se mantiene disponible para uso local y para integraciones externas futuras.
+
+El vectorstore pregenerado debe estar disponible en el repositorio para que Streamlit Cloud pueda acceder a él sin necesidad de ejecutar el scraping en la nube.
 
 ---
 
