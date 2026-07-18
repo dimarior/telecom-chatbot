@@ -457,9 +457,13 @@ maxUploadSize = 5
 
 ### Consideración sobre el despliegue
 
-Para el despliegue en Streamlit Community Cloud, la lógica conversacional se integra directamente en la interfaz Streamlit, eliminando la dependencia de la API FastAPI como servicio externo. LangGraph, ChromaDB y los módulos multimodales corren dentro del mismo proceso de Streamlit. La API FastAPI se mantiene disponible para uso local y para integraciones externas futuras.
+Para el despliegue en Streamlit Community Cloud, la lógica conversacional se integra directamente en la interfaz Streamlit, eliminando la dependencia de la API FastAPI como servicio externo. LangGraph, ChromaDB y los módulos multimodales corren dentro del mismo proceso de Streamlit.
 
-El vectorstore pregenerado debe estar disponible en el repositorio para que Streamlit Cloud pueda acceder a él sin necesidad de ejecutar el scraping en la nube.
+Los nodos del grafo conversacional fueron convertidos a funciones síncronas para garantizar compatibilidad con Streamlit Cloud. La memoria conversacional se gestiona mediante st.session_state durante la sesión activa del usuario.
+
+El vectorstore pregenerado con sentence-transformers está incluido en el repositorio para que Streamlit Cloud pueda acceder a él sin necesidad de ejecutar el scraping en la nube.
+
+La API FastAPI se mantiene disponible para uso local y para integraciones externas futuras.
 
 ---
 
