@@ -203,10 +203,10 @@ def _make_llm(temperature: float = LLM_TEMPERATURE):
 def make_classify_node(vector_store: Chroma):
     router_llm = _make_llm(temperature=0.0).with_structured_output(RouteDecision)
 
-    async def classify_node(state: ChatState) -> dict:
+    def classify_node(state: ChatState) -> dict:
         history = state.get("messages") or []
         recent = history[-_ROUTER_HISTORY_WINDOW:]
-        decision: RouteDecision = await router_llm.ainvoke([
+        decision: RouteDecision = router_llm.invoke([
             SystemMessage(content=ROUTER_SYSTEM),
             *recent,
             HumanMessage(content=state["question"]),
@@ -220,7 +220,7 @@ def make_classify_node(vector_store: Chroma):
 # ── Nodo: direct ──────────────────────────────────────────────────────────────
 
 def make_direct_node():
-    async def direct_node(state: ChatState) -> dict:
+    def direct_node(state: ChatState) -> dict:
         return {"context": state["question"], "sources": []}
     return direct_node
 
@@ -239,7 +239,7 @@ def _load_catalog() -> dict:
 def make_product_node():
     catalog = _load_catalog()
 
-    async def product_node(state: ChatState) -> dict:
+    def product_node(state: ChatState) -> dict:
         if catalog:
             context = (
                 f"Información del catálogo de operadores de telecomunicaciones en Colombia:\n\n"
@@ -262,7 +262,7 @@ def make_product_node():
 # ── Nodo: retrieve (RAG) ──────────────────────────────────────────────────────
 
 def make_retrieve_node(vector_store: Chroma, top_k: int = RETRIEVER_K):
-    async def retrieve_node(state: ChatState) -> dict:
+    def retrieve_node(state: ChatState) -> dict:
         k = state.get("top_k") or top_k
         docs_with_scores = vector_store.similarity_search_with_relevance_scores(
             state["question"], k=k
@@ -304,7 +304,7 @@ def make_retrieve_node(vector_store: Chroma, top_k: int = RETRIEVER_K):
 # ── Nodo: generate ────────────────────────────────────────────────────────────
 
 def make_generate_node():
-    async def generate_node(state: ChatState) -> dict:
+    def generate_node(state: ChatState) -> dict:
         system = _system_for_route(state.get("route"))
         history = state.get("messages") or []
         temperature = state.get("temperature", LLM_TEMPERATURE)
@@ -317,7 +317,7 @@ def make_generate_node():
         ]
 
         chunks: list[str] = []
-        async for chunk in llm.astream(prompt_messages):
+        for chunk in llm.stream(prompt_messages):
             piece = chunk.content if isinstance(chunk.content, str) else ""
             if piece:
                 chunks.append(piece)
