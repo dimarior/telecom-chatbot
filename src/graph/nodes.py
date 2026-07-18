@@ -195,6 +195,8 @@ def _make_llm(temperature: float = LLM_TEMPERATURE):
         model=MISTRAL_MODEL,
         api_key=MISTRAL_API_KEY,
         temperature=temperature,
+        timeout=120,
+        max_retries=3,
     )
 
 
