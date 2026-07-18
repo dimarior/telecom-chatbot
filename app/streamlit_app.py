@@ -22,13 +22,14 @@ ASSETS        = Path("app/assets")
 
 @st.cache_resource(show_spinner="Iniciando GAIA...")
 def get_graph():
-    """Inicializa el grafo LangGraph una sola vez y lo cachea en memoria."""
     import sqlite3
+    import asyncio
     from langchain_chroma import Chroma
     from langchain_huggingface import HuggingFaceEmbeddings
-    from langgraph.checkpoint.sqlite import SqliteSaver
+    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
     from src.config import DB_PATH, RETRIEVER_K, VECTORSTORE_DIR
     from src.graph import build_graph
+    import aiosqlite
 
     embeddings = HuggingFaceEmbeddings(
         model_name="paraphrase-multilingual-mpnet-base-v2"
@@ -37,26 +38,45 @@ def get_graph():
         persist_directory=str(VECTORSTORE_DIR),
         embedding_function=embeddings,
     )
-    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-    checkpointer = SqliteSaver(conn)
-    graph = build_graph(
-        vector_store=vector_store,
-        checkpointer=checkpointer,
-        top_k=RETRIEVER_K,
-    )
-    return graph
+
+    async def _build():
+        conn = await aiosqlite.connect(str(DB_PATH))
+        checkpointer = AsyncSqliteSaver(conn)
+        await checkpointer.setup()
+        return build_graph(
+            vector_store=vector_store,
+            checkpointer=checkpointer,
+            top_k=RETRIEVER_K,
+        )
+
+    return asyncio.run(_build())
 
 
 def invoke_graph(pregunta: str, session_id: str) -> dict:
-    """Invoca el grafo LangGraph de forma síncrona."""
+    """Invoca el grafo LangGraph manejando el loop de asyncio correctamente."""
     from langchain_core.messages import AIMessage
+    import asyncio
 
-    graph = get_graph()
-    config = {"configurable": {"thread_id": session_id}}
-    t0 = time.time()
-    result = graph.invoke({"question": pregunta}, config=config)
-    latencia = round(time.time() - t0, 3)
+    async def _run():
+        from src.config import DB_PATH, RETRIEVER_K, VECTORSTORE_DIR
+        graph = get_graph()
+        config = {"configurable": {"thread_id": session_id}}
+        return await graph.ainvoke({"question": pregunta}, config=config)
 
+    # Manejar el loop de asyncio correctamente en Streamlit Cloud
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                future = pool.submit(asyncio.run, _run())
+                result = future.result()
+        else:
+            result = loop.run_until_complete(_run())
+    except RuntimeError:
+        result = asyncio.run(_run())
+
+    t0_end = time.time()
     messages = result.get("messages", [])
     respuesta = ""
     for msg in reversed(messages):
@@ -66,7 +86,7 @@ def invoke_graph(pregunta: str, session_id: str) -> dict:
 
     return {
         "respuesta": respuesta,
-        "latencia_segundos": latencia,
+        "latencia_segundos": result.get("latencia", 0),
         "sources": result.get("sources", []),
     }
 
