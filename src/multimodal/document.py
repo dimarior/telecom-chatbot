@@ -116,7 +116,13 @@ def _ocr_fallback(pdf_path: str) -> tuple[str, list[str]]:
         import easyocr
 
         _LOG.info("Cargando EasyOCR para PDF escaneado...")
-        ocr_reader = easyocr.Reader(["es", "en"], gpu=False, verbose=False)
+        ocr_reader = easyocr.Reader(
+            ["es", "en"],
+            gpu=False,
+            verbose=False,
+            download_enabled=True,
+            model_storage_directory="/tmp/easyocr_models",
+        )
 
         doc = fitz.open(pdf_path)
         pages_text = []

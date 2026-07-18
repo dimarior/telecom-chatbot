@@ -31,11 +31,13 @@ def _get_reader():
     global _ocr_reader
     if _ocr_reader is None:
         import easyocr
-        _LOG.info("Cargando EasyOCR con idiomas %s...", OCR_LANGUAGES)
+        _LOG.info("Cargando EasyOCR...")
         _ocr_reader = easyocr.Reader(
-            OCR_LANGUAGES,
-            gpu=False,          # CPU — sin GPU
+            ["es", "en"],
+            gpu=False,
             verbose=False,
+            download_enabled=True,
+            model_storage_directory="/tmp/easyocr_models",
         )
         _LOG.info("EasyOCR cargado correctamente.")
     return _ocr_reader
