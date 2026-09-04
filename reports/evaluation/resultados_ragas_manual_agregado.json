@@ -1,0 +1,53 @@
+{
+  "framework": "mistral_direct_llm_judge",
+  "n_runs": 3,
+  "modelo": "mistral-small-latest",
+  "modelo_embeddings_answer_relevancy": "mistral-embed",
+  "modelo_embeddings_retrieval": "paraphrase-multilingual-mpnet-base-v2",
+  "total_preguntas": 5,
+  "metricas_agregadas": {
+    "faithfulness": {
+      "mean": 0.1,
+      "std": 0.0409,
+      "valores_por_corrida": [
+        0.1379,
+        0.0567,
+        0.1055
+      ]
+    },
+    "answer_relevancy": {
+      "mean": 0.8898,
+      "std": 0.0059,
+      "valores_por_corrida": [
+        0.8867,
+        0.8861,
+        0.8967
+      ]
+    },
+    "context_precision": {
+      "mean": 0.6333,
+      "std": 0.0,
+      "valores_por_corrida": [
+        0.6333,
+        0.6333,
+        0.6333
+      ]
+    },
+    "context_recall": {
+      "mean": 0.2832,
+      "std": 0.0055,
+      "valores_por_corrida": [
+        0.28,
+        0.28,
+        0.2895
+      ]
+    }
+  },
+  "thresholds": {
+    "faithfulness": 0.85,
+    "answer_relevancy": 0.8,
+    "context_precision": 0.75,
+    "context_recall": 0.8
+  },
+  "eval_gate_passed": false
+}

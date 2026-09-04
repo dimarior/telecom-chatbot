@@ -23,9 +23,6 @@ gaia_memory.db
 mlruns/
 mlartifacts/
 
-# Reports (sí versionar estructura, no resultados)
-reports/evaluation/*.json
-
 # VS Code
 .vscode/
 *.code-workspace
