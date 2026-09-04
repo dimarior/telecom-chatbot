@@ -507,6 +507,20 @@ python -m src.evaluate_ragas
 | Context Precision | Proporción de chunks relevantes recuperados | mayor a 0.75 |
 | Context Recall | Cobertura de información necesaria | mayor a 0.80 |
 
+### Resultados de evaluacion RAGAS (3 corridas, promedio)
+| Metrica | Promedio | Desviacion | Threshold | Estado |
+|---|---|---|---|---|
+| Faithfulness | 0.100 | 0.041 | >0.85 | No cumple |
+| Answer Relevancy | 0.890 | 0.006 | >0.80 | Cumple |
+| Context Precision | 0.633 | 0.000 | >0.75 | No cumple |
+| Context Recall | 0.283 | 0.005 | >0.80 | No cumple |
+
+El Answer Relevancy supera el umbral establecido. Las metricas de
+Faithfulness, Context Precision y Context Recall reflejan limitaciones
+del prototipo documentadas en el Capitulo 8 del documento de tesis:
+alucinacion de detalles especificos no presentes en el corpus y
+cobertura insuficiente del retriever con RETRIEVER_K=4.
+
 ---
 
 ## Métricas MLflow
