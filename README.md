@@ -521,6 +521,17 @@ del prototipo documentadas en el Capitulo 8 del documento de tesis:
 alucinacion de detalles especificos no presentes en el corpus y
 cobertura insuficiente del retriever con RETRIEVER_K=4.
 
+### Historial de corridas en MLflow
+
+| Run | Fecha | Faithfulness | Answer Relevancy | Context Precision | Context Recall |
+|---|---|---|---|---|---|
+| Corrida 1 | 2026-09-04 07:19 UTC | 0.100 | 0.885 | 0.633 | 0.280 |
+| Corrida 2 | 2026-09-04 07:21 UTC | 0.131 | 0.893 | 0.633 | 0.310 |
+| Corrida 3 | 2026-09-04 07:22 UTC | 0.129 | 0.890 | 0.633 | 0.293 |
+| **Agregado (promedio)** | 2026-09-04 07:24 UTC | **0.120 ± 0.017** | **0.889 ± 0.004** | **0.633 ± 0.000** | **0.294 ± 0.015** |
+
+MLflow UI: http://127.0.0.1:5002/#/experiments/2
+
 ---
 
 ## Métricas MLflow
