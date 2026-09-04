@@ -1,22 +1,16 @@
 """
-src/evaluate_ragas_manual.py
-─────────────────────────────
+src/evaluate_ragas.py
+──────────────────────
 Evaluación RAGAS "manual" (sin la librería `ragas`) usando la API de Mistral
 directamente como LLM-juez, más el endpoint de embeddings de Mistral para
-answer_relevancy. Pensado como reemplazo de `src/evaluate_ragas.py` cuando la
-librería `ragas` da problemas de compatibilidad (torch/sentence-transformers,
-versiones de datasets, etc.).
+answer_relevancy. Reemplaza la evaluación original basada en la librería
+`ragas`, que daba problemas de compatibilidad (torch/sentence-transformers,
+versiones de datasets, etc.). Este archivo es autosuficiente: no depende de
+ningún otro módulo de evaluación (EVAL_RAGAS, THRESHOLDS y eval_gate() están
+definidos aquí mismo, más abajo).
 
-Reutiliza de src.evaluate_ragas:
-  - EVAL_RAGAS      (dataset de 5 preguntas + ground_truth)
-  - THRESHOLDS      (umbrales de producción)
-  - eval_gate()     (verifica thresholds)
-Ese import NO dispara `import ragas` porque en evaluate_ragas.py ese import
-está dentro de evaluar_ragas(), no a nivel de módulo.
-
-La generación de respuesta + contexto NO reutiliza build_ragas_dataset() de
-evaluate_ragas.py, porque ese helper recupera contexto con
-retrieve_documents() de src/rag_chain.py, que todavía usa OllamaEmbeddings —
+La generación de respuesta + contexto NO usa retrieve_documents() de
+src/rag_chain.py, porque ese helper recupera contexto con OllamaEmbeddings —
 mientras que el vectorstore de producción (VECTORSTORE_DIR) fue regenerado
 con HuggingFaceEmbeddings("paraphrase-multilingual-mpnet-base-v2") vía
 Chroma (ver api/main.py). Ese mismatch de espacio vectorial hacía que el
@@ -55,7 +49,7 @@ Requiere el paquete `requests` (normalmente ya viene como dependencia de
 otras librerías; si falta: `uv add requests`).
 
 Uso:
-    python -m src.evaluate_ragas_manual
+    python -m src.evaluate_ragas
 """
 from __future__ import annotations
 
@@ -82,11 +76,6 @@ from src.config import (
     RETRIEVER_K,
     VECTORSTORE_DIR,
 )
-from src.evaluate_ragas import (
-    EVAL_RAGAS,
-    THRESHOLDS,
-    eval_gate,
-)
 from src.rag_chain import ask
 
 try:
@@ -94,12 +83,90 @@ try:
 except ImportError:  # no definido en config.py -> usar el default de Mistral
     MISTRAL_EMBED_MODEL = "mistral-embed"
 
+# ── Dataset de evaluación con ground_truth (embebido, no depende de ─────────────
+# ── ningún otro módulo de evaluación) ───────────────────────────────────────────
+
+EVAL_RAGAS = [
+    {
+        "question": "¿Cómo reporto una falla técnica de internet con Claro?",
+        "ground_truth": (
+            "Para reportar una falla técnica de internet con Claro puedes llamar "
+            "a la línea 018000910900, usar el chat en claro.com.co o acceder a "
+            "Mi Claro para gestionar el reporte en línea."
+        ),
+        "operador": "claro",
+    },
+    {
+        "question": "¿Cómo hago la portabilidad numérica en Colombia?",
+        "ground_truth": (
+            "La portabilidad numérica en Colombia permite conservar tu número al "
+            "cambiar de operador. Debes solicitar el código de portabilidad a tu "
+            "operador actual, luego contactar al nuevo operador para iniciar el proceso. "
+            "El trámite tarda máximo 3 días hábiles y es regulado por la CRC."
+        ),
+        "operador": "general",
+    },
+    {
+        "question": "¿Cómo pago mi factura de Movistar en línea?",
+        "ground_truth": (
+            "Puedes pagar tu factura de Movistar en línea a través del portal "
+            "movistar.com.co en la sección de pagos, mediante la app Mi Movistar, "
+            "o por PSE con tu número de línea y referencia de pago."
+        ),
+        "operador": "movistar",
+    },
+    {
+        "question": "¿Cómo recargo mi línea prepago de Tigo?",
+        "ground_truth": (
+            "Puedes recargar tu línea prepago Tigo marcando *611, en el sitio "
+            "tigo.com.co, en puntos de venta autorizados, o mediante la app Tigo. "
+            "También puedes hacer recargas electrónicas en tiendas y droguerías."
+        ),
+        "operador": "tigo",
+    },
+    {
+        "question": "¿Cuáles son los canales de atención al cliente de los operadores de telecomunicaciones?",
+        "ground_truth": (
+            "Los operadores en Colombia ofrecen atención por teléfono, chat en línea, "
+            "aplicaciones móviles y puntos de atención presencial. Claro atiende por "
+            "018000910900, Movistar por *611 y Tigo también por *611 desde su línea."
+        ),
+        "operador": "general",
+    },
+]
+
+THRESHOLDS = {
+    "faithfulness": 0.85,
+    "answer_relevancy": 0.80,
+    "context_precision": 0.75,
+    "context_recall": 0.80,
+}
+
+
+def eval_gate(results: dict) -> bool:
+    """
+    Verifica que todas las métricas superen los thresholds.
+    Retorna True si pasa, False si alguna métrica está por debajo.
+    """
+    print("\n" + "=" * 65)
+    print("  EVAL GATE — VERIFICACIÓN DE THRESHOLDS")
+    print("=" * 65)
+    all_passed = True
+    for metric, threshold in THRESHOLDS.items():
+        score = results.get(metric, 0)
+        passed = score >= threshold
+        estado = "PASS" if passed else "FAIL"
+        print(f"  {estado} | {metric:<25} {score:.3f} (threshold: {threshold})")
+        if not passed:
+            all_passed = False
+    return all_passed
+
 # Mismo modelo de embeddings que usa api/main.py para el vectorstore Chroma
 # de producción. Debe coincidir con el modelo usado para construir/regenerar
 # VECTORSTORE_DIR, o el retrieval trae chunks sin relación con la pregunta.
 RETRIEVAL_HF_EMBEDDING_MODEL = "paraphrase-multilingual-mpnet-base-v2"
 
-_LOG = logging.getLogger("gaia.evaluate_ragas_manual")
+_LOG = logging.getLogger("gaia.evaluate_ragas")
 
 # Activar con: $env:RAGAS_MANUAL_DEBUG="1" (PowerShell) antes de correr el script,
 # para imprimir el contexto real enviado al juez y la respuesta cruda de Mistral.
@@ -541,11 +608,9 @@ def retrieve_documents_hf(question: str, k: int = RETRIEVER_K) -> list:
 def build_ragas_dataset_hf() -> list[dict]:
     """
     Genera pregunta + respuesta + contexto + ground_truth para cada item de
-    EVAL_RAGAS, igual que build_ragas_dataset() de src.evaluate_ragas, pero
-    recuperando el contexto con retrieve_documents_hf() en vez de
+    EVAL_RAGAS, recuperando el contexto con retrieve_documents_hf() en vez de
     retrieve_documents() de src.rag_chain (ver nota al inicio del archivo).
-    Devuelve una lista de dicts (no un `datasets.Dataset`) para no depender
-    del paquete `datasets`.
+    Devuelve una lista de dicts, sin depender del paquete `datasets`.
     """
     rows = []
     print("=" * 65)

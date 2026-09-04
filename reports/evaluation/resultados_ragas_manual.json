@@ -5,10 +5,10 @@
   "modelo_embeddings_retrieval": "paraphrase-multilingual-mpnet-base-v2",
   "total_preguntas": 5,
   "metricas": {
-    "faithfulness": 0.1055,
-    "answer_relevancy": 0.8967,
+    "faithfulness": 0.1286,
+    "answer_relevancy": 0.89,
     "context_precision": 0.6333,
-    "context_recall": 0.2895
+    "context_recall": 0.2933
   },
   "thresholds": {
     "faithfulness": 0.85,
@@ -17,40 +17,40 @@
     "context_recall": 0.8
   },
   "eval_gate_passed": false,
-  "tiempo_evaluacion_s": 66.89,
+  "tiempo_evaluacion_s": 66.22,
   "detalle_por_pregunta": [
     {
       "question": "¿Cómo reporto una falla técnica de internet con Claro?",
-      "faithfulness": 0.0769,
-      "answer_relevancy": 0.941,
+      "faithfulness": 0.1429,
+      "answer_relevancy": 0.9359,
       "context_precision": 1.0,
       "context_recall": 0.0
     },
     {
       "question": "¿Cómo hago la portabilidad numérica en Colombia?",
       "faithfulness": 0.0,
-      "answer_relevancy": 0.8209,
+      "answer_relevancy": 0.8016,
       "context_precision": 0.8333,
-      "context_recall": 0.4
+      "context_recall": 0.6
     },
     {
       "question": "¿Cómo pago mi factura de Movistar en línea?",
-      "faithfulness": 0.1429,
-      "answer_relevancy": 0.9243,
+      "faithfulness": 0.3,
+      "answer_relevancy": 0.9278,
       "context_precision": 1.0,
-      "context_recall": 0.7143
+      "context_recall": 0.6667
     },
     {
       "question": "¿Cómo recargo mi línea prepago de Tigo?",
-      "faithfulness": 0.3077,
-      "answer_relevancy": 0.9353,
+      "faithfulness": 0.2,
+      "answer_relevancy": 0.9135,
       "context_precision": 0.3333,
-      "context_recall": 0.3333
+      "context_recall": 0.2
     },
     {
       "question": "¿Cuáles son los canales de atención al cliente de los operadores de telecomunicaciones?",
       "faithfulness": 0.0,
-      "answer_relevancy": 0.8619,
+      "answer_relevancy": 0.8711,
       "context_precision": 0.0,
       "context_recall": 0.0
     }
