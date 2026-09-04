@@ -510,10 +510,10 @@ python -m src.evaluate_ragas
 ### Resultados de evaluacion RAGAS (3 corridas, promedio)
 | Metrica | Promedio | Desviacion | Threshold | Estado |
 |---|---|---|---|---|
-| Faithfulness | 0.100 | 0.041 | >0.85 | No cumple |
-| Answer Relevancy | 0.890 | 0.006 | >0.80 | Cumple |
+| Faithfulness | 0.120 | 0.017 | >0.85 | No cumple |
+| Answer Relevancy | 0.889 | 0.004 | >0.80 | Cumple |
 | Context Precision | 0.633 | 0.000 | >0.75 | No cumple |
-| Context Recall | 0.283 | 0.005 | >0.80 | No cumple |
+| Context Recall | 0.294 | 0.015 | >0.80 | No cumple |
 
 El Answer Relevancy supera el umbral establecido. Las metricas de
 Faithfulness, Context Precision y Context Recall reflejan limitaciones
