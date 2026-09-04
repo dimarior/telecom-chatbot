@@ -494,6 +494,21 @@ El módulo `src/evaluate.py` ejecuta 15 preguntas distribuidas por operador (5 C
 python -m src.evaluate
 ```
 
+### Evaluación con usuarios (30 participantes)
+
+Validación empírica del prototipo con 30 participantes distribuidos
+en tres perfiles de satisfacción (satisfechos, neutrales e insatisfechos),
+
+| Indicador | Valor | DE | Target | Estado |
+|---|---|---|---|---|
+| Usabilidad SUS | 74.67 / 100 | 11.45 | >68 | Cumple |
+| Empatia percibida (Likert) | 3.81 / 5 | 0.54 | >3.5 | Cumple |
+| Resolucion primer contacto | 3.47 / 5 | 0.88 | >3.5 | No cumple |
+| Confianza | 3.58 / 5 | 0.90 | >3.5 | Cumple |
+| Likert general | 3.69 / 5 | 0.65 | >3.5 | Cumple |
+
+**NPS: +20 puntos** — Promotores 10 (33.3%) · Pasivos 16 (53.3%) · Detractores 4 (13.3%)
+
 ### Evaluación avanzada con RAGAS
 
 ```bash
