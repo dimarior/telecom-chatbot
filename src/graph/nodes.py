@@ -231,7 +231,13 @@ def make_classify_node(vector_store: Chroma):
 
 def make_direct_node():
     def direct_node(state: ChatState) -> dict:
-        return {"context": state["question"], "sources": []}
+        history = state.get("messages") or []
+        hay_historial = len(history) > 0
+        contexto = (
+            f"{'[Conversación en curso — NO te vuelvas a presentar]' if hay_historial else ''}\n"
+            f"El usuario dice: {state['question']}"
+        )
+        return {"context": contexto, "sources": []}
     return direct_node
 
 
