@@ -230,14 +230,16 @@ def make_classify_node(vector_store: Chroma):
 # ── Nodo: direct ──────────────────────────────────────────────────────────────
 
 def make_direct_node():
+    SALUDOS_INICIALES = ["hola", "buenos días", "buenas tardes", "buenas noches", "hey", "buen día"]
+    
     def direct_node(state: ChatState) -> dict:
-        history = state.get("messages") or []
-        hay_historial = len(history) > 0
-        contexto = (
-            f"{'[Conversación en curso — NO te vuelvas a presentar]' if hay_historial else ''}\n"
-            f"El usuario dice: {state['question']}"
-        )
+        pregunta_lower = state["question"].lower().strip()
+        es_saludo_inicial = any(s in pregunta_lower for s in SALUDOS_INICIALES) and len(pregunta_lower) < 30
+        
+        prefijo = "" if es_saludo_inicial else "[Conversación en curso — NO te vuelvas a presentar. Mantén el hilo.]\n"
+        contexto = f"{prefijo}El usuario dice: {state['question']}"
         return {"context": contexto, "sources": []}
+    
     return direct_node
 
 
