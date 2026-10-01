@@ -68,6 +68,7 @@ ROUTER_SYSTEM = (
     "• Autogestión, trámites, procesos en línea\n"
     "• Preguntas frecuentes de cualquier operador\n"
     "• Cobertura, velocidades, tecnologías (4G, 5G, fibra)\n"
+    "• Registro de IMEI, bloqueo o desbloqueo de equipos\n"
     "• Procedimientos paso a paso\n\n"
     "REGLAS IMPORTANTES:\n"
     "• Si detectas frustración o urgencia, prioriza 'direct' para contención emocional SOLO si no hay una pregunta técnica clara\n"
@@ -143,6 +144,8 @@ PRODUCT_SYSTEM = (
     "• Comercialmente claro pero humanamente cercano\n"
     "• Evita sonar como un folleto publicitario\n"
     "• Usa frases como: 'Lo que te recomendaría es...', 'Una buena opción sería...'\n\n"
+    "Cuando menciones números de marcación corta (611, 123, 888, etc.), "
+    "indícalos siempre como *611, *123, *888 para marcar desde celular.\n\n"
     "Responde en español. Máximo 4 oraciones. Directo y útil."
 )
 
