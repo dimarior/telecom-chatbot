@@ -253,7 +253,21 @@ def make_direct_node():
         es_saludo_inicial = any(s in pregunta_lower for s in SALUDOS_INICIALES) and len(pregunta_lower) < 60
         
         prefijo = "" if es_saludo_inicial else "[Conversación en curso — NO te vuelvas a presentar. Mantén el hilo.]\n"
-        contexto = f"{prefijo}El usuario dice: {state['question']}"
+        
+        msgs = state.get("messages", [])
+        historial_texto = ""
+        if msgs:
+            from langchain_core.messages import HumanMessage, AIMessage
+            lineas = []
+            for m in msgs[-6:]:
+                if isinstance(m, HumanMessage):
+                    lineas.append(f"Usuario: {m.content}")
+                elif isinstance(m, AIMessage):
+                    lineas.append(f"GAIA: {m.content}")
+            if lineas:
+                historial_texto = "\n".join(lineas) + "\n\n"
+        
+        contexto = f"{prefijo}{historial_texto}El usuario dice: {state['question']}"
         return {"context": contexto, "sources": []}
     
     return direct_node
