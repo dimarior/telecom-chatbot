@@ -42,8 +42,7 @@ def get_graph():
     return graph
 
 
-def invoke_graph(pregunta: str, session_id: str) -> dict:
-    """Invoca el grafo LangGraph de forma síncrona."""
+def invoke_graph(pregunta: str, session_id: str, history: list = None) -> dict:
     from langchain_core.messages import AIMessage
     from src.config import MISTRAL_API_KEY
     import os
@@ -52,7 +51,10 @@ def invoke_graph(pregunta: str, session_id: str) -> dict:
     graph = get_graph()
     config = {"configurable": {"thread_id": session_id}}
     t0 = time.time()
-    result = asyncio.run(graph.ainvoke({"question": pregunta}, config=config))
+    result = asyncio.run(graph.ainvoke(
+        {"question": pregunta, "messages": history or []},
+        config=config,
+    ))
     latencia = round(time.time() - t0, 3)
 
     messages = result.get("messages", [])
@@ -66,6 +68,7 @@ def invoke_graph(pregunta: str, session_id: str) -> dict:
         "respuesta": respuesta,
         "latencia_segundos": latencia,
         "sources": result.get("sources", []),
+        "messages": messages,
     }
 
 OPERADORES = {
@@ -158,6 +161,8 @@ if "textarea_key" not in st.session_state:
     st.session_state["textarea_key"] = 0
 if "texto_transcrito" not in st.session_state:
     st.session_state["texto_transcrito"] = ""
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []    
 
 operador = st.session_state["operador_actual"]
 color_op = OPERADORES[operador]["color"]
@@ -416,6 +421,7 @@ with st.sidebar:
         st.session_state["archivo_adjunto"] = None
         st.session_state["tipo_adjunto"] = None
         st.session_state["mostrar_uploader"] = None
+        st.session_state["chat_history"] = []
         st.rerun()
 
     for sid, datos in list(st.session_state["sesiones"].items()):
@@ -789,7 +795,7 @@ elif consultar and (hay_texto or hay_archivo):
                     st.error(f"No se pudo transcribir el audio: {transcripcion['error']}")
                     st.stop()
                 texto_audio = transcripcion["text"]
-                result = invoke_graph(f"[Voz transcrita] {texto_audio}", session_id)
+                result = invoke_graph(f"[Voz transcrita] {texto_audio}", session_id, st.session_state["chat_history"])
                 modalidad_enviada = "audio"
                 contenido_usuario = f"[Audio: {archivo_adj.name}]"
                 if hay_texto:
@@ -803,7 +809,7 @@ elif consultar and (hay_texto or hay_archivo):
                 contexto = describe_image_context(texto_ocr, filename=archivo_adj.name)
                 if pregunta.strip():
                     contexto += f"\n\nPregunta del usuario: {pregunta.strip()}"
-                result = invoke_graph(contexto, session_id)
+                result = invoke_graph(contexto, session_id, st.session_state["chat_history"])
                 modalidad_enviada = "imagen"
                 contenido_usuario = f"[Imagen: {archivo_adj.name}]"
                 if hay_texto:
@@ -823,7 +829,7 @@ elif consultar and (hay_texto or hay_archivo):
                 )
                 if pregunta.strip():
                     contexto += f"\n\nPregunta del usuario: {pregunta.strip()}"
-                result = invoke_graph(contexto, session_id)
+                result = invoke_graph(contexto, session_id, st.session_state["chat_history"])
                 modalidad_enviada = "documento"
                 contenido_usuario = f"[PDF: {archivo_adj.name}]"
                 if hay_texto:
@@ -833,11 +839,12 @@ elif consultar and (hay_texto or hay_archivo):
                 pregunta_enriquecida = pregunta.strip()
                 if operador_sel != "todos":
                     pregunta_enriquecida = f"[{OPERADORES[operador_sel]['nombre']}] {pregunta.strip()}"
-                result = invoke_graph(pregunta_enriquecida, session_id)
+                result = invoke_graph(pregunta_enriquecida, session_id, st.session_state["chat_history"])
                 modalidad_enviada = "texto"
                 contenido_usuario = pregunta.strip()
 
             if result and "respuesta" in result:
+                st.session_state["chat_history"] = result.get("messages", st.session_state["chat_history"])
                 sid = st.session_state["sesion_actual"]
                 if sid not in st.session_state["sesiones"]:
                     st.session_state["sesiones"][sid] = {"nombre": "Nueva conversación", "historial": []}
