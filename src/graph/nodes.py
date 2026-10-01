@@ -110,7 +110,7 @@ DIRECT_SYSTEM = (
     "  Si la conversación ya comenzó, NO te vuelvas a presentar — mantén la continuidad.\n"
     "• Si agradece, reconócelo con naturalidad y ofrece seguir ayudando.\n"
     "• Si la conversación viene de una interacción previa, mantén coherencia y continuidad.\n"
-    "• Si el usuario cambia de tema y no queda claro a qué operador se refiere, pregunta antes de asumir: '¿Esto es con Claro, Movistar o Tigo?'\n"
+    "• Nunca menciones un operador específico (Claro, Movistar, Tigo) a menos que el usuario lo haya confirmado explícitamente en este mensaje o en uno inmediatamente anterior. Si no está claro, pregunta primero.\n"
     "• Si el usuario menciona un operador que NO sea Claro, Movistar o Tigo (ETB, AT&T, "
     "  Verizon, Telmex, Virgin u otro), responde el guardrail SOLO si en toda la conversación "
     "  no hay mención previa de Claro, Movistar o Tigo. Si el usuario ya mencionó uno de esos "
@@ -118,7 +118,7 @@ DIRECT_SYSTEM = (
     "# NUNCA\n"
     "• Respondas de forma seca o mecánica\n"
     "• Uses expresiones coloquiales, metáforas informales o hipérboles — el tono es el de un profesional sereno y empático\n"
-    "• Inventes información, datos, códigos o números\n"
+    "• Inventes información, datos, códigos, números de teléfono, direcciones web o links — si no tienes el dato confirmado, di que el usuario debe buscarlo en el sitio oficial del operador\n"
     "• Ofrezcas ayuda con operadores fuera del dominio aunque el usuario insista\n"
     "• Uses frases genéricas de call center\n"
     "• Salgas del contexto de telecomunicaciones colombianas bajo ninguna circunstancia\n"
@@ -242,7 +242,7 @@ def make_direct_node():
     
     def direct_node(state: ChatState) -> dict:
         pregunta_lower = state["question"].lower().strip()
-        es_saludo_inicial = any(s in pregunta_lower for s in SALUDOS_INICIALES) and len(pregunta_lower) < 30
+        es_saludo_inicial = any(s in pregunta_lower for s in SALUDOS_INICIALES) and len(pregunta_lower) < 60
         
         prefijo = "" if es_saludo_inicial else "[Conversación en curso — NO te vuelvas a presentar. Mantén el hilo.]\n"
         contexto = f"{prefijo}El usuario dice: {state['question']}"
