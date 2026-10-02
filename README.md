@@ -202,6 +202,8 @@ telecom-chatbot/
 |   +-- analysis/                Scripts de análisis estadístico de encuestas
 |   |   +-- analisis_encuesta_evaluacion.py
 |   |   +-- analisis_encuesta_sondeo.py
+|   |   +-- generar_graficas_evaluacion.py   Genera las 6 gráficas de evaluación desde el Excel
+|   |   +-- figures/                         PNG generados (grafica_01 a grafica_06)
 |   +-- evaluation/              Resultados JSON de evaluación RAG y RAGAS
 |       +-- resultados_ragas_manual.json
 |       +-- resultados_ragas_manual_agregado.json
@@ -584,6 +586,19 @@ en tres perfiles de satisfacción (satisfechos, neutrales e insatisfechos).
 **NPS: +20 puntos** — Promotores 10 (33.3%) · Pasivos 16 (53.3%) · Detractores 4 (13.3%)
 
 Los instrumentos de recolección y sus respuestas se encuentran en `data/encuestas/`. Los scripts de análisis estadístico están en `reports/analysis/`.
+
+Para reproducir el análisis estadístico:
+
+```bash
+# Análisis descriptivo encuesta de sondeo (línea base diagnóstica)
+python reports/analysis/analisis_encuesta_sondeo.py
+
+# Análisis descriptivo encuesta de evaluación
+python reports/analysis/analisis_encuesta_evaluacion.py
+
+# Generar gráficas de evaluación (PNG en reports/analysis/figures/)
+python reports/analysis/generar_graficas_evaluacion.py --excel "data/encuestas/Encuesta de Evaluación - Asistente Virtual GAIA (respuestas).xlsx"
+```
 
 ### Evaluación avanzada con RAGAS
 
