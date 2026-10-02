@@ -69,32 +69,15 @@ def extract_text_from_pdf(pdf_bytes: bytes, filename: str = "document.pdf") -> d
                     "ocr_used": False,
                 }
 
-            # PDF sin texto seleccionable — aplicar OCR como fallback
-            _LOG.info("PDF sin texto seleccionable, aplicando OCR como fallback...")
-            full_text, pages_text = _ocr_fallback(tmp_path)
-
-            if not full_text.strip():
-                return {
-                    "text": "", "pages": 0, "success": False,
-                    "error": (
-                        "No se pudo extraer texto del PDF. "
-                        "Intenta enviar una foto del documento usando el botón Imagen."
-                    ),
-                    "ocr_used": True,
-                }
-
-            elapsed = round(time.time() - t0, 2)
-            _LOG.info(
-                "PDF procesado con OCR en %ss | páginas=%d | chars=%d",
-                elapsed, len(pages_text), len(full_text)
-            )
+            # PDF sin texto seleccionable — OCR no disponible en entorno cloud
+            _LOG.warning("PDF sin texto seleccionable. OCR deshabilitado en entorno cloud.")
             return {
-                "text": full_text,
-                "pages": len(pages_text),
-                "duration": elapsed,
-                "success": True,
-                "error": None,
-                "ocr_used": True,
+                "text": "", "pages": 0, "success": False,
+                "error": (
+                    "Este PDF es una imagen escaneada y no tiene texto seleccionable. "
+                    "Por favor envíalo usando el botón 📷 Imagen en lugar de PDF."
+                ),
+                "ocr_used": False,
             }
 
         finally:
