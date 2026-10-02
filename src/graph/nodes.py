@@ -289,6 +289,8 @@ def make_classify_node(vector_store: Chroma):
 def make_direct_node():
     
     def direct_node(state: ChatState) -> dict:
+        from langchain_core.messages import HumanMessage, AIMessage
+        
         msgs = state.get("messages", [])
         gaia_ya_hablo = any(isinstance(m, AIMessage) for m in msgs)
         
@@ -297,7 +299,6 @@ def make_direct_node():
         msgs = state.get("messages", [])
         historial_texto = ""
         if msgs:
-            from langchain_core.messages import HumanMessage, AIMessage
             lineas = []
             for m in msgs[-6:]:
                 if isinstance(m, HumanMessage):
