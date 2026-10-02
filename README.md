@@ -8,18 +8,82 @@ El proyecto es parte de una investigación académica sobre experiencia de usuar
 
 La implementación actual cubre los operadores Claro, Movistar y Tigo como caso de estudio, aunque la arquitectura es extensible a cualquier operador de telecomunicaciones mediante la configuración de nuevas fuentes de datos en src/config.py y la regeneración del vectorstore.
 
+> **Kit de implementación:** guía técnica, biblioteca de prompts y checklist normativo → [`IMPLEMENTATION_KIT.md`](IMPLEMENTATION_KIT.md)
+
 ---
 
 ## Arquitectura del Sistema
 
 El sistema se compone de cuatro capas principales: la interfaz de usuario (Streamlit), la capa de API (FastAPI), el motor de inteligencia conversacional (LangGraph + RAG) y el módulo multimodal (faster-whisper + EasyOCR + PyMuPDF).
 
-### Flujo conversacional
+### Diagrama de arquitectura
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         USUARIO                             │
+│              texto · voz · imagen · documento               │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                ┌───────────▼───────────┐
+                │   Módulo Multimodal   │
+                │  src/multimodal/      │
+                │  audio  → faster-whisper  → texto │
+                │  imagen → EasyOCR         → texto │
+                │  PDF    → PyMuPDF+OCR     → texto │
+                └───────────┬───────────┘
+                            │
+                ┌───────────▼───────────┐
+                │     Streamlit UI      │
+                │   app/streamlit_app.py│
+                │   session_state       │
+                └───────────┬───────────┘
+                            │
+                ┌───────────▼───────────┐
+                │     FastAPI (API)     │
+                │     api/main.py       │
+                └───────────┬───────────┘
+                            │
+          ┌─────────────────▼──────────────────┐
+          │          LangGraph                 │
+          │                                    │
+          │   ┌─────────────────────────────┐  │
+          │   │   classify_node (router)    │  │
+          │   │  detección emocional +      │  │
+          │   │  clasificación de intención │  │
+          │   └──────┬──────────┬───────────┘  │
+          │          │          │          │   │
+          │     direct_node  product_node  │   │
+          │     social/OOD   planes/       │   │
+          │     emocional    precios       │   │
+          │          │          │    rag_route  │
+          │          │          │       │      │
+          │          │          │  retrieve_node│
+          │          │          │  ChromaDB    │
+          │          │          │  top-k       │
+          │          └────┬─────┘      │      │
+          │               │            │      │
+          │          ┌────▼────────────▼───┐  │
+          │          │   generate_node     │  │
+          │          │   Mistral AI        │  │
+          │          │   mistral-small     │  │
+          │          └────────┬────────────┘  │
+          │                   │  MLflow Tracing│
+          └───────────────────┼────────────────┘
+                              │
+                ┌─────────────▼─────────────┐
+                │      Respuesta final      │
+                │      Streamlit UI         │
+                └───────────────────────────┘
+```
+
+> ⚠ `checkpointer=None` en Streamlit Cloud — la memoria persiste dentro de la sesión del navegador, no entre sesiones distintas. Al pulsar "Nueva conversación" se reinicia `chat_history`.
+
+### Flujo conversacional (texto)
 
 ```
 Usuario (texto / voz / imagen / PDF)
    |
-M�dulo Multimodal (src/multimodal/)
+Módulo Multimodal (src/multimodal/)
    |  audio  → faster-whisper ASR → texto transcrito automáticamente
    |  imagen → EasyOCR            → texto extraído
    |  PDF    → PyMuPDF            → texto extraído (con fallback a EasyOCR si es escaneado)
@@ -129,10 +193,19 @@ telecom-chatbot/
 +-- data/
 |   +-- raw/                     Datos crudos (no versionados)
 |   +-- processed/               Archivos .txt generados por el scraper
+|   +-- encuestas/               Instrumentos de evaluación con usuarios
+|       +-- Encuesta de Evaluación - Asistente Virtual GAIA (respuestas).xlsx
+|       +-- Encuesta Sondeo Chatbots y Atención al Cliente en Telecomunicaciones (respuestas).xlsx
 |
 +-- vectorstore/                 ChromaDB persistido (generado localmente, no versionado)
 +-- reports/
+|   +-- analysis/                Scripts de análisis estadístico de encuestas
+|   |   +-- analisis_encuesta_evaluacion.py
+|   |   +-- analisis_encuesta_sondeo.py
 |   +-- evaluation/              Resultados JSON de evaluación RAG y RAGAS
+|       +-- resultados_ragas_manual.json
+|       +-- resultados_ragas_manual_agregado.json
+|       +-- mlflow_runs_summary.md
 |
 +-- docker/
 |   +-- prometheus.yml           Configuración de Prometheus
@@ -152,6 +225,7 @@ telecom-chatbot/
 +-- .env.example                 Plantilla de variables de entorno
 +-- .gitignore
 +-- README.md
++-- IMPLEMENTATION_KIT.md        Guía técnica, biblioteca de prompts y checklist normativo
 ```
 
 ---
@@ -497,17 +571,19 @@ python -m src.evaluate
 ### Evaluación con usuarios (30 participantes)
 
 Validación empírica del prototipo con 30 participantes distribuidos
-en tres perfiles de satisfacción (satisfechos, neutrales e insatisfechos),
+en tres perfiles de satisfacción (satisfechos, neutrales e insatisfechos).
 
 | Indicador | Valor | DE | Target | Estado |
 |---|---|---|---|---|
 | Usabilidad SUS | 74.67 / 100 | 11.45 | >68 | Cumple |
-| Empatia percibida (Likert) | 3.81 / 5 | 0.54 | >3.5 | Cumple |
-| Resolucion primer contacto | 3.47 / 5 | 0.88 | >3.5 | No cumple |
+| Empatía percibida (Likert) | 3.81 / 5 | 0.54 | >3.5 | Cumple |
+| Resolución primer contacto | 3.47 / 5 | 0.88 | >3.5 | No cumple |
 | Confianza | 3.58 / 5 | 0.90 | >3.5 | Cumple |
 | Likert general | 3.69 / 5 | 0.65 | >3.5 | Cumple |
 
 **NPS: +20 puntos** — Promotores 10 (33.3%) · Pasivos 16 (53.3%) · Detractores 4 (13.3%)
+
+Los instrumentos de recolección y sus respuestas se encuentran en `data/encuestas/`. Los scripts de análisis estadístico están en `reports/analysis/`.
 
 ### Evaluación avanzada con RAGAS
 
@@ -522,19 +598,18 @@ python -m src.evaluate_ragas
 | Context Precision | Proporción de chunks relevantes recuperados | mayor a 0.75 |
 | Context Recall | Cobertura de información necesaria | mayor a 0.80 |
 
-### Resultados de evaluacion RAGAS (3 corridas, promedio)
-| Metrica | Promedio | Desviacion | Threshold | Estado |
+### Resultados de evaluación RAGAS (3 corridas, promedio)
+
+| Métrica | Promedio | Desviación | Threshold | Estado |
 |---|---|---|---|---|
 | Faithfulness | 0.120 | 0.017 | >0.85 | No cumple |
 | Answer Relevancy | 0.889 | 0.004 | >0.80 | Cumple |
 | Context Precision | 0.633 | 0.000 | >0.75 | No cumple |
 | Context Recall | 0.294 | 0.015 | >0.80 | No cumple |
 
-El Answer Relevancy supera el umbral establecido. Las metricas de
-Faithfulness, Context Precision y Context Recall reflejan limitaciones
-del prototipo documentadas en el Capitulo 8 del documento de tesis:
-alucinacion de detalles especificos no presentes en el corpus y
-cobertura insuficiente del retriever con RETRIEVER_K=4.
+El Answer Relevancy supera el umbral establecido. Las métricas de Faithfulness, Context Precision y Context Recall reflejan limitaciones del prototipo documentadas en el Capítulo 8 del documento de tesis: alucinación de detalles específicos no presentes en el corpus y cobertura insuficiente del retriever con RETRIEVER_K=4.
+
+Los resultados completos se encuentran en `reports/evaluation/`.
 
 ### Historial de corridas en MLflow
 
