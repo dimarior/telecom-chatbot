@@ -74,9 +74,10 @@ def extract_text_from_pdf(pdf_bytes: bytes, filename: str = "document.pdf") -> d
             return {
                 "text": "", "pages": 0, "success": False,
                 "error": (
-                    "Este PDF es una imagen escaneada y no tiene texto seleccionable. "
-                    "Por favor envíalo usando el botón 📷 Imagen en lugar de PDF."
-                ),
+                    "El archivo PDF adjunto no contiene texto seleccionable. "
+                    "Por favor verifica que sea un PDF digital (no escaneado). "
+                    "Si no, toma una foto del documento y adjúntala usando el botón 📷 Imagen."
+            ),
                 "ocr_used": False,
             }
 
