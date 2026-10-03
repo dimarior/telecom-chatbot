@@ -587,6 +587,13 @@ en tres perfiles de satisfacción (satisfechos, neutrales e insatisfechos).
 
 Los instrumentos de recolección y sus respuestas se encuentran en `data/encuestas/`. Los scripts de análisis estadístico están en `reports/analysis/`.
 
+**Formularios de recolección:**
+
+| Instrumento | Enlace |
+|---|---|
+| Encuesta de evaluación del prototipo | https://forms.gle/vNbFYuZvtBaHK2rp7 |
+| Encuesta de sondeo (chatbots y atención al cliente) | https://forms.gle/pVd6tCP3TnNDn5RHA |
+
 Para reproducir el análisis estadístico:
 
 ```bash
